@@ -1,4 +1,3 @@
-
 play :-
     display_menu,
     read_option(Option),
@@ -74,25 +73,46 @@ initial_state((Player1, Player2)) :-
 display_game(board(Rows), computer) :-
     write('Computer is gonna play'), nl.
 
-% Display game for human
-display_game(board(Rows), human,w) :-           %display game for white, human
-    write('Player 1 is gonna play'), nl,
+display_game(board(Rows), human, w) :-           % Display game for white, human
+    write('White to play'), nl,
     display_board(board(Rows)), nl,
-    write('Insert your play: '),nl,
-    read_move(Play,w,board(Rows)),
-    write('good move!'),nl,
-    move(board(Rows),w,Play,NewBoard),
-    display_game(NewBoard, human,b).
+    write('Insert your play: '), nl,
+    read_move(Play, w, board(Rows)),
+    write('Good move!'), nl,
+    move(board(Rows), w, Play, NewBoard),
+    ( 
+        game_over(NewBoard, Winner),
+        (Winner = 'b' -> nl,write('Black is the winner !!!'), nl,nl;
+         Winner = 'w' -> nl,write('White is the winner !!!'), nl,nl),
+         display_board(NewBoard)
+    ;
+        display_game(NewBoard, human, b)        % Continue the game if no winner
+    ).
 
 display_game(board(Rows), human,b) :-        %display game for black, human
-    write('Player 1 is gonna play'), nl,
+    write('Black to play'), nl,
     display_board(board(Rows)), nl,
     write('Insert your play: '),nl,
     read_move(Play,b,board(Rows)),
     write('good move!'),nl,
     move(board(Rows),b,Play,NewBoard),
-    display_game(NewBoard, human,w).
+    ( 
+        game_over(NewBoard, Winner),
+        (Winner = 'b' -> write('Black is the winner !!!'), nl;
+         Winner = 'w' -> write('White is the winner !!!'), nl),
+         display_board(NewBoard)
+    ;
+        display_game(NewBoard, human, w)        % Continue the game if no winner
+    ).
    
+
+
+game_over(board(Rows), 'b') :-              %Game over function
+    get_element(board(Rows), 8, 8, 'x'), !.
+
+game_over(board(Rows), 'w') :-
+    get_element(board(Rows), 1, 1, 'y').
+
 
 
 
@@ -307,7 +327,6 @@ move(board(Rows),b,((X1,Y1),(X2,Y2)),NewBoard) :-           %move black
 
 
 move(board(Rows),b,((X1,Y1),(X2,Y2)),NewBoard) :-           %move black
-    write('black move:'),nl,
     get_element(board(Rows),X1,Y1,'b'),
     replace_element(board(Rows),X1,Y1,'_',NewBoard1),
     replace_element(NewBoard1,X2,Y2,'b',NewBoard);
@@ -326,7 +345,6 @@ move(board(Rows),w,((X1,Y1),(X2,Y2)),NewBoard) :-           %move white
 
 
 move(board(Rows),w,((X1,Y1),(X2,Y2)),NewBoard) :-           %move white
-   
     get_element(board(Rows),X1,Y1,'w'),
     replace_element(board(Rows),X1,Y1,'_',NewBoard1),
     replace_element(NewBoard1,X2,Y2,'w',NewBoard);
@@ -424,4 +442,5 @@ direction(w, -1, 0).  % White: Diagonal left (up in the matrix)
 direction(w, 0, -1).  % White: Diagonal right (left in the matrix)
 
 */
+
 
