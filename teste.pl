@@ -50,12 +50,12 @@ initial_state((Player1, Player2)) :-
     write('Game starting... (Player 1: '), write(Player1), write(', Player 2: '), write(Player2), write(')'), nl,
     display_game(board([
         ['x', 'b', 'b', 'b', '_', '_','_', '_'],
-        ['b', 'x', 'b', 'b', '_', '_', '_', '_'],
-        ['b', 'b', 'w', '_','_', '_', '_', '_'],
+        ['b', 'b', 'b', 'b', '_', '_', '_', '_'],
+        ['b', 'b', '_', '_','_', '_', '_', '_'],
         ['b', 'b', '_', '_', '_', '_', '_', '_'],
         ['_', '_', '_', '_', '_', '_', 'w', 'w'],
         ['_', '_', '_', '_', '_', '_', 'w', 'w'],
-        ['_', '_', '_', '_',  'w', 'w', 'b', 'w'],
+        ['_', '_', '_', '_',  'w', 'w', 'w', 'w'],
         ['_', '_', '_', '_',  'w', 'w', 'w', 'y']
     ]),Player1,w).
     
@@ -86,7 +86,7 @@ display_game(board(Rows), human, w) :-           % Display game for white, human
         (game_over(board(Rows), Play, Winner) ; game_over(NewBoard, Winner)),
         (Winner = 'b' -> write('Black is the winner !!!'), nl;
          Winner = 'w' -> write('White is the winner !!!'), nl),
-        display_board(NewBoard)
+        display_board(NewBoard),play
     ;
         display_game(NewBoard, human, b)        % Continue the game if no winner
     ).
@@ -102,7 +102,7 @@ display_game(board(Rows), human,b) :-        %display game for black, human
         (game_over(board(Rows), Play, Winner) ; game_over(NewBoard, Winner)),
         (Winner = 'b' -> write('Black is the winner !!!'), nl;
          Winner = 'w' -> write('White is the winner !!!'), nl),
-        display_board(NewBoard)  
+        display_board(NewBoard),play  
     ;   
         display_game(NewBoard, human, w)        % Continue the game if no winner
     ).
@@ -204,42 +204,9 @@ search_directionb((X, Y), DX, DY, Rows, Target) :-
     
 
 
-read_move(Play, w, board(Rows)) :-
-    write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,           %read white move
-    read(Input),
-    (   
-        Input = ((X1, Y1), (X2, Y2)),
-        X1=:=X2,
-        Y1=:=Y2,
-        check_transform((X1,Y1),w,board(Rows), Value),
-        (Value = 'True' ->
-            write('Valid transform!'), nl, Play = Input
-        ;   
-            write('Invalid transform. Try a different one: '), nl,
-            read_move(Play, w, board(Rows)))
-    ;
-        % Validate simple move
-        Input = ((X1, Y1), (X2, Y2)),
-        X1 >= 1, X1 =< 8,
-        X2 >= 1, X2 =< 8,
-        Y1 >= 1, Y1 =< 8,
-        Y2 >= 1, Y2 =< 8,
-        (Y2 - Y1 =:= -1; Y2 - Y1 =:= 0),
-        (X2 - X1 =:= -1; X2 - X1 =:= 0)
-    ->  
-        Play = Input, 
-        write('Valid move!'), nl
-    ;   
-        % Check jump validity
-        check_jump(board(Rows), w, Input, Value),
-        (Value = 'True' ->
-            write('Valid jump!'), nl, Play = Input
-        ;   
-            write('Invalid play. Try a different one: '), nl,
-            read_move(Play, w, board(Rows)))
-    ).
 
 
+/*
 read_move(Play, b,board(Rows)) :-
     write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,           %read black move  
     read(Input),
@@ -274,6 +241,164 @@ read_move(Play, b,board(Rows)) :-
             write('Invalid play. Try a different one: '), nl,
             read_move(Play, b, board(Rows)))
     ).
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+read_move(Play, w, board(Rows)) :-
+    write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,
+    read_safe(Input),
+    validate_and_handle_input(Input, Play, w, board(Rows)).
+
+read_move(Play, b, board(Rows)) :-
+    write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,
+    read_safe(Input),
+    validate_and_handle_input(Input, Play, b, board(Rows)).
+
+read_safe(Input) :-
+    catch(read(Input), _Error, (write('Invalid input format. Try again.'), nl, read_safe(Input))).
+
+validate_and_handle_input(Input, Play, w, board(Rows)) :-
+    validate_move(Input, w, board(Rows), Valid, Play),
+    (Valid = 'True' ->
+        true
+    ;
+        write('Invalid move. Try again.'), nl,
+        read_move(Play, w, board(Rows))
+    ).
+
+validate_and_handle_input(Input, Play, b, board(Rows)) :-
+    validate_move(Input, b, board(Rows), Valid, Play),
+    (Valid = 'True' ->
+        true
+    ;
+        write('Invalid move. Try again.'), nl,
+        read_move(Play, b, board(Rows))
+    ).
+
+validate_move(Input, w, board(Rows), Valid, Play) :-
+    (
+        % Check for transform move
+        Input = ((X1, Y1), (X2, Y2)),
+        X1 =:= X2, Y1 =:= Y2,
+        check_transform((X1, Y1), w, board(Rows), Value),
+        (Value = 'True' -> 
+            write('Valid transform!'), nl, Play = Input, Valid = 'True'
+        ; 
+            Valid = 'False'
+        )
+    ;
+        % Validate simple move
+        Input = ((X1, Y1), (X2, Y2)),
+        X1 >= 1, X1 =< 8,
+        X2 >= 1, X2 =< 8,
+        Y1 >= 1, Y1 =< 8,
+        Y2 >= 1, Y2 =< 8,
+        (Y2 - Y1 =:= -1; Y2 - Y1 =:= 0),
+        (X2 - X1 =:= -1; X2 - X1 =:= 0)
+    ->
+        Play = Input, 
+        write('Valid move!'), nl, Valid = 'True'
+    ;
+        % Check jump validity
+        check_jump(board(Rows), w, Input, Value),
+        (Value = 'True' -> 
+            write('Valid jump!'), nl, Play = Input, Valid = 'True'
+        ; 
+            Valid = 'False'
+        )
+    ).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+validate_move(Input, b, board(Rows), Valid, Play) :-
+    (
+        % Check for transform move
+        Input = ((X1, Y1), (X2, Y2)),
+        X1 =:= X2, Y1 =:= Y2,
+        check_transform((X1, Y1), b, board(Rows), Value),
+        (Value = 'True' -> 
+            write('Valid transform!'), nl, Play = Input, Valid = 'True'
+        ; 
+            Valid = 'False'
+        )
+    ;
+        % Validate simple move
+        Input = ((X1, Y1), (X2, Y2)),
+        X1 >= 1, X1 =< 8,
+        X2 >= 1, X2 =< 8,
+        Y1 >= 1, Y1 =< 8,
+        Y2 >= 1, Y2 =< 8,
+        (Y2 - Y1 =:= 1; Y2 - Y1 =:= 0),
+        (X2 - X1 =:= 1; X2 - X1 =:= 0)
+    ->
+        Play = Input, 
+        write('Valid move!'), nl, Valid = 'True'
+    ;
+        % Check jump validity
+        check_jump(board(Rows), b, Input, Value),
+        (Value = 'True' -> 
+            write('Valid jump!'), nl, Play = Input, Valid = 'True'
+        ; 
+            Valid = 'False'
+        )
+    ).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 % Predicate to check jump validity
 check_jump(board(Rows), w, ((X1, Y1), (X2, Y2)), Value) :-          %horizontal white jump check
@@ -562,5 +687,3 @@ direction(w, -1, 0).  % White: Diagonal left (up in the matrix)
 direction(w, 0, -1).  % White: Diagonal right (left in the matrix)
 
 */
-
-
