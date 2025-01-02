@@ -1,3 +1,5 @@
+:- use_module(library(Lists)).
+
 play :-
     display_menu,
     read_option(Option),
@@ -117,10 +119,102 @@ game_over(board(Rows), 'w') :-
 
 
 
+check_transform((X1, Y1), w, board(Rows), Value) :-
+    get_element(board(Rows), X1, Y1, Element),
+    (   Element \= 'w'                                                     
+    ->  Value = 'False', !                                                
+    ;                                 %check transform white
+    (   search_direction((X1, Y1),  0,  1, Rows, 'y') -> Value = 'True' 
+    ;   search_direction((X1, Y1),  0, -1, Rows, 'y') -> Value = 'True' 
+    ;   search_direction((X1, Y1),  1,  0, Rows, 'y') -> Value = 'True' 
+    ;   search_direction((X1, Y1), -1,  0, Rows, 'y') -> Value = 'True' 
+    ;   search_direction((X1, Y1),  1,  1, Rows, 'y') -> Value = 'True' 
+    ;   search_direction((X1, Y1),  1, -1, Rows, 'y') -> Value = 'True' 
+    ;   search_direction((X1, Y1), -1,  1, Rows, 'y') -> Value = 'True' 
+    ;   search_direction((X1, Y1), -1, -1, Rows, 'y') -> Value = 'True' 
+    ;   Value = 'False' % Default if 'y' is not found in any direction
+    )
+    ).
+
+check_transform((X1, Y1), b, board(Rows), Value) :-                         % Check transform black
+    get_element(board(Rows), X1, Y1, Element),
+    (   Element \= 'b'                                                     
+    ->  Value = 'False', !                                                
+    ;   (   search_directionb((X1, Y1),  0,  1, Rows, 'x') -> Value = 'True' 
+        ;   search_directionb((X1, Y1),  0, -1, Rows, 'x') -> Value = 'True' 
+        ;   search_directionb((X1, Y1),  1,  0, Rows, 'x') -> Value = 'True' 
+        ;   search_directionb((X1, Y1), -1,  0, Rows, 'x') -> Value = 'True' 
+        ;   search_directionb((X1, Y1),  1,  1, Rows, 'x') -> Value = 'True' 
+        ;   search_directionb((X1, Y1),  1, -1, Rows, 'x') -> Value = 'True' 
+        ;   search_directionb((X1, Y1), -1,  1, Rows, 'x') -> Value = 'True' 
+        ;   search_directionb((X1, Y1), -1, -1, Rows, 'x') -> Value = 'True' 
+        ;   Value = 'False'                                                % Default if 'x' is not found in any direction
+        )
+    ).
+
+search_direction((X, Y), DX, DY, Rows, Target) :-
+    NX is X + DX,
+    NY is Y + DY,
+    within_bounds(NX, NY),             
+    get_element(board(Rows), NX, NY, Element),
+    (   Element = Target               % If the Target is found, succeed
+    ;   Element \= 'b', Element \= 'x', 
+        search_direction((NX, NY), DX, DY, Rows, Target) % Continue searching with recursion
+    ).
+
+
+within_bounds(X, Y) :-
+    X > 0, X =< 8,
+    Y > 0, Y =< 8.
+
+
+
+
+search_directionb((X, Y), DX, DY, Rows, Target) :-
+    NX is X + DX,
+    NY is Y + DY,
+    within_bounds(NX, NY),              
+    get_element(board(Rows), NX, NY, Element),
+    (   Element = Target               % If the Target is found, succeed
+    ;   Element \= 'w', Element \= 'y', 
+        search_directionb((NX, NY), DX, DY, Rows, Target) % Continue searching with recursion
+    ).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
 read_move(Play, w, board(Rows)) :-
     write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,           %read white move
     read(Input),
     (   
+        Input = ((X1, Y1), (X2, Y2)),
+        X1=:=X2,
+        Y1=:=Y2,
+        check_transform((X1,Y1),w,board(Rows), Value),
+        (Value = 'True' ->
+            write('Valid transform!'), nl, Play = Input
+        ;   
+            write('Invalid transform. Try a different one: '), nl,
+            read_move(Play, w, board(Rows)))
+    ;
         % Validate simple move
         Input = ((X1, Y1), (X2, Y2)),
         X1 >= 1, X1 =< 8,
@@ -146,7 +240,18 @@ read_move(Play, w, board(Rows)) :-
 read_move(Play, b,board(Rows)) :-
     write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,           %read black move  
     read(Input),
-    (   % Check validity
+    (   
+        Input = ((X1, Y1), (X2, Y2)),
+        X1=:=X2,
+        Y1=:=Y2,
+        check_transform((X1,Y1),b,board(Rows), Value),
+        (Value = 'True' ->
+            write('Valid transform!'), nl, Play = Input
+        ;   
+            write('Invalid transform. Try a different one: '), nl,
+            read_move(Play, b, board(Rows)))
+    ;
+        % Check validity
         Input = ((X1, Y1), (X2, Y2)),
         X1 >= 1, X1 =< 8,
         X2 >= 1, X2 =< 8,
@@ -319,7 +424,15 @@ diagonal_path(board(Rows), X1, Y1, X2, Y2) :-
 
 
 
+move(board(Rows),w,((X1,Y1),(X2,Y2)),NewBoard):-            %transform white
+    X1=:=X2,
+    Y1=:=Y2,
+    replace_element(board(Rows),X1,Y1,'y',NewBoard).
 
+move(board(Rows),b,((X1,Y1),(X2,Y2)),NewBoard):-            %transform black
+    X1=:=X2,
+    Y1=:=Y2,
+    replace_element(board(Rows),X1,Y1,'x',NewBoard).
 
 move(board(Rows),b,((X1,Y1),(X2,Y2)),NewBoard) :-           %move black
     get_element(board(Rows),X2,Y2,'b').
@@ -362,32 +475,36 @@ move(board(Rows),w,((X1,Y1),(X2,Y2)),NewBoard) :-           %move white
 
 % display_board/1: Takes a board and prints it row by row
 display_board(board(Rows)) :-
-    write('  1 2 3 4 5 6 7 8'), nl, % Column headers
-    display_rows(Rows, 1).         % Start with row number 1
+       
+    length(Rows, RowCount),          % Get the total number of rows
+    display_rows_from_bottom(Rows, RowCount),
+    write('  1 2 3 4 5 6 7 8'). % Start displaying from the bottom
 
-% display_rows/2: Helper predicate to iterate over rows with a row index
-display_rows([], _).
-display_rows([Row|Rest], Index) :-
-    write(Index), write(' '),       % Print row index
-    display_row(Row),               % Print the row contents
-    nl,                             % New line after each row
-    NextIndex is Index + 1,         % Increment the row index
-    display_rows(Rest, NextIndex).  % Recursive call for the remaining rows
+% display_rows_from_bottom/2: Iterate over rows in reverse order, starting from the last row
+display_rows_from_bottom(_, 0).       % Base case: no more rows to display
+display_rows_from_bottom(Rows, Index) :-
+    nth1(Index, Rows, Row),           % Get the row at position Index
+    write(Index), write(' '),         % Print row index
+    display_row(Row),                 % Print the row contents
+    nl,                               % New line after each row
+    PrevIndex is Index - 1,           % Move to the previous row
+    display_rows_from_bottom(Rows, PrevIndex). % Recursive call for the remaining rows
 
 % display_row/1: Helper predicate to print elements in a single row
 display_row([]).
 display_row([Cell|Rest]) :-
-    display_cell(Cell),             % Print the cell
-    write(' '),                     % Add a space after each cell
-    display_row(Rest).              % Recursive call for the remaining cells
+    display_cell(Cell),               % Print the cell
+    write(' '),                       % Add a space after each cell
+    display_row(Rest).                % Recursive call for the remaining cells
 
- 
 % display_cell/1: Helper predicate to display board elements
 display_cell(Cell) :-
-    (   var(Cell)                   % If the cell is uninstantiated
-    ->  write('_')                  % Display as '_'
-    ;   write(Cell)                 
+    (   var(Cell)                     % If the cell is uninstantiated
+    ->  write('_')                    % Display as '_'
+    ;   write(Cell)
     ).
+
+
 
 
 
@@ -442,5 +559,6 @@ direction(w, -1, 0).  % White: Diagonal left (up in the matrix)
 direction(w, 0, -1).  % White: Diagonal right (left in the matrix)
 
 */
+
 
 
