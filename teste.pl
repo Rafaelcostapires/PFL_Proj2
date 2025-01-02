@@ -50,12 +50,12 @@ initial_state((Player1, Player2)) :-
     write('Game starting... (Player 1: '), write(Player1), write(', Player 2: '), write(Player2), write(')'), nl,
     display_game(board([
         ['x', 'b', 'b', 'b', '_', '_','_', '_'],
-        ['b', 'b', 'b', 'b', '_', '_', '_', '_'],
-        ['b', 'b', '_', '_','_', '_', '_', '_'],
+        ['b', 'x', 'b', 'b', '_', '_', '_', '_'],
+        ['b', 'b', 'w', '_','_', '_', '_', '_'],
         ['b', 'b', '_', '_', '_', '_', '_', '_'],
         ['_', '_', '_', '_', '_', '_', 'w', 'w'],
         ['_', '_', '_', '_', '_', '_', 'w', 'w'],
-        ['_', '_', '_', '_',  'w', 'w', 'w', 'w'],
+        ['_', '_', '_', '_',  'w', 'w', 'b', 'w'],
         ['_', '_', '_', '_',  'w', 'w', 'w', 'y']
     ]),Player1,w).
     
@@ -83,10 +83,10 @@ display_game(board(Rows), human, w) :-           % Display game for white, human
     write('Good move!'), nl,
     move(board(Rows), w, Play, NewBoard),
     ( 
-        game_over(NewBoard, Winner),
-        (Winner = 'b' -> nl,write('Black is the winner !!!'), nl,nl;
-         Winner = 'w' -> nl,write('White is the winner !!!'), nl,nl),
-         display_board(NewBoard)
+        (game_over(board(Rows), Play, Winner) ; game_over(NewBoard, Winner)),
+        (Winner = 'b' -> write('Black is the winner !!!'), nl;
+         Winner = 'w' -> write('White is the winner !!!'), nl),
+        display_board(NewBoard)
     ;
         display_game(NewBoard, human, b)        % Continue the game if no winner
     ).
@@ -98,18 +98,21 @@ display_game(board(Rows), human,b) :-        %display game for black, human
     read_move(Play,b,board(Rows)),
     write('good move!'),nl,
     move(board(Rows),b,Play,NewBoard),
-    ( 
-        game_over(NewBoard, Winner),
+    (   
+        (game_over(board(Rows), Play, Winner) ; game_over(NewBoard, Winner)),
         (Winner = 'b' -> write('Black is the winner !!!'), nl;
          Winner = 'w' -> write('White is the winner !!!'), nl),
-         display_board(NewBoard)
-    ;
+        display_board(NewBoard)  
+    ;   
         display_game(NewBoard, human, w)        % Continue the game if no winner
     ).
    
+game_over(board(Rows),((X1,Y1),(X2,Y2)),'b'):-      %Game over function
+    get_element(board(Rows),X2,Y2,'y').
+game_over(board(Rows),((X1,Y1),(X2,Y2)),'w'):-
+    get_element(board(Rows),X2,Y2,'x').
 
-
-game_over(board(Rows), 'b') :-              %Game over function
+game_over(board(Rows), 'b') :-                      %Game over function
     get_element(board(Rows), 8, 8, 'x'), !.
 
 game_over(board(Rows), 'w') :-
@@ -559,6 +562,5 @@ direction(w, -1, 0).  % White: Diagonal left (up in the matrix)
 direction(w, 0, -1).  % White: Diagonal right (left in the matrix)
 
 */
-
 
 
