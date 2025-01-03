@@ -61,14 +61,14 @@ initial_state((Player1, Player2)) :-
     
 
     board([
-        [x, b, b, b, _, _, _, _],
-        [b, b, b, b, _, _, _, _],
-        [b, b, _, _, _, _, _, _],
-        [b, b, _, _, _, _, _, _],
-        [_, _, _, _, _, _, w, w],
-        [_, _, _, _, _, _, w, w],
-        [_, _, _, _, w, w, w, w],
-        [_, _, _, _, w, w, w, y]
+        ['x', 'b', 'b', 'b', '_', '_','_', '_'],
+        ['b', 'b', 'b', 'b', '_', '_', '_', '_'],
+        ['b', 'b', '_', '_','_', '_', '_', '_'],
+        ['b', 'b', '_', '_', '_', '_', '_', '_'],
+        ['_', '_', '_', '_', '_', '_', 'w', 'w'],
+        ['_', '_', '_', '_', '_', '_', 'w', 'w'],
+        ['_', '_', '_', '_',  'w', 'w', 'w', 'w'],
+        ['_', '_', '_', '_',  'w', 'w', 'w', 'y']
     ]).
 
 % Display game for computer
@@ -182,6 +182,29 @@ search_directionb((X, Y), DX, DY, Rows, Target) :-
     ;   Element \= 'w', Element \= 'y', 
         search_directionb((NX, NY), DX, DY, Rows, Target) % Continue searching with recursion
     ).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+valid_moves(board(Rows), b, Moves) :-
+    findall(((X1, Y1), (X2, Y2)), (validate_move(_, b, board(Rows), 'True', ((X1, Y1), (X2, Y2)))), Moves).
+
+
+
+
+
+
+
+% Ensure Low, High, and Value are integers
+between(Low, High, Low) :-
+    integer(Low),
+    integer(High),
+    Low =< High.
+
+between(Low, High, Value) :-
+    integer(Low),
+    integer(High),
+    Low < High,
+    Next is Low + 1,
+    between(Next, High, Value).
 
 
 
@@ -190,71 +213,7 @@ search_directionb((X, Y), DX, DY, Rows, Target) :-
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-/*
-read_move(Play, b,board(Rows)) :-
-    write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,           %read black move  
-    read(Input),
-    (   
-        Input = ((X1, Y1), (X2, Y2)),
-        X1=:=X2,
-        Y1=:=Y2,
-        check_transform((X1,Y1),b,board(Rows), Value),
-        (Value = 'True' ->
-            write('Valid transform!'), nl, Play = Input
-        ;   
-            write('Invalid transform. Try a different one: '), nl,
-            read_move(Play, b, board(Rows)))
-    ;
-        % Check validity
-        Input = ((X1, Y1), (X2, Y2)),
-        X1 >= 1, X1 =< 8,
-        X2 >= 1, X2 =< 8,
-        Y1 >= 1, Y1 =< 8,
-        Y2 >= 1, Y2 =< 8,
-        (Y2 - Y1 =:= 1; Y2 - Y1 =:= 0),
-        (X2 - X1 =:= 1; X2 - X1 =:= 0)
-    ->  
-        Play = Input, 
-        write('Valid move!'), nl
-    ;   
-        % Check jump validity
-        check_jump(board(Rows), b, Input, Value),
-        (Value = 'True' ->
-            write('Valid jump!'), nl, Play = Input
-        ;   
-            write('Invalid play. Try a different one: '), nl,
-            read_move(Play, b, board(Rows)))
-    ).
-
-*/
-
-
-
-
-
-
-
-
-
-
-
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
@@ -310,23 +269,32 @@ validate_move(Input, w, board(Rows), Valid, Play) :-
     ;
         % Validate simple move
         Input = ((X1, Y1), (X2, Y2)),
-        X1 >= 1, X1 =< 8,
-        X2 >= 1, X2 =< 8,
-        Y1 >= 1, Y1 =< 8,
-        Y2 >= 1, Y2 =< 8,
+        (X1, Y1)\= (X2, Y2),
+        within_bounds(X1,Y1),
+        within_bounds(X2,Y2),
+
+
         (Y2 - Y1 =:= -1; Y2 - Y1 =:= 0),
-        (X2 - X1 =:= -1; X2 - X1 =:= 0)
+        (X2 - X1 =:= -1; X2 - X1 =:= 0),
+
+
+        get_element(board(Rows),X2,Y2,Element),
+        Element\='w',Element\='y'
     ->
         Play = Input, 
         write('Valid move!'), nl, Valid = 'True'
-    ;
-        % Check jump validity
+    ;   
+        Input = ((X1, Y1), (X2, Y2)),
+        get_element(board(Rows),X2,Y2,Element),
+        Element\='w',Element\='y',
         check_jump(board(Rows), w, Input, Value),
         (Value = 'True' -> 
             write('Valid jump!'), nl, Play = Input, Valid = 'True'
         ; 
             Valid = 'False'
         )
+    ;   
+        Valid = 'False'
     ).
 
 
@@ -344,37 +312,42 @@ validate_move(Input, w, board(Rows), Valid, Play) :-
 
 
 validate_move(Input, b, board(Rows), Valid, Play) :-
+    Input = ((X1, Y1), (X2, Y2)),
+    get_element(board(Rows), X1, Y1, Element),
+    (Element = 'b'; Element = 'x'),  % Logical OR here    
+    within_bounds(X1, Y1),
+    within_bounds(X2, Y2),
+    get_element(board(Rows), X2, Y2, Element1),
+    Element1 \= 'x',      
     (
         % Check for transform move
-        Input = ((X1, Y1), (X2, Y2)),
-        X1 =:= X2, Y1 =:= Y2,
+        Element = 'b', X1 =:= X2, Y1 =:= Y2,
         check_transform((X1, Y1), b, board(Rows), Value),
         (Value = 'True' -> 
             write('Valid transform!'), nl, Play = Input, Valid = 'True'
         ; 
-            Valid = 'False'
-        )
+            Valid = 'False')        
     ;
-        % Validate simple move
-        Input = ((X1, Y1), (X2, Y2)),
-        X1 >= 1, X1 =< 8,
-        X2 >= 1, X2 =< 8,
-        Y1 >= 1, Y1 =< 8,
-        Y2 >= 1, Y2 =< 8,
-        (Y2 - Y1 =:= 1; Y2 - Y1 =:= 0),
-        (X2 - X1 =:= 1; X2 - X1 =:= 0)
+        % Validate simple move (no transformation)
+        ( (Y2 - Y1 =:= 1, X2 - X1 =:= 1);
+          (X2 - X1 =:= 1, Y2 - Y1 =:= 0);
+          (Y2 - Y1 =:= 0, X2 - X1 =:= 1)
+        ),
+        Element1 \= 'b', Element1 \= 'x'  % Element1 should not be 'b' or 'x'
     ->
         Play = Input, 
         write('Valid move!'), nl, Valid = 'True'
     ;
-        % Check jump validity
         check_jump(board(Rows), b, Input, Value),
         (Value = 'True' -> 
             write('Valid jump!'), nl, Play = Input, Valid = 'True'
         ; 
             Valid = 'False'
         )
+    ;
+        Valid = 'False'
     ).
+
 
 
 
