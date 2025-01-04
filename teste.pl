@@ -1,3 +1,4 @@
+:- use_module(library(random)).
 :- use_module(library(Lists)).
 
 play :-
@@ -54,10 +55,10 @@ initial_state((Player1, Player2)) :-
         ['b', 'b', '_', '_','_', '_', '_', '_'],
         ['b', 'b', '_', '_', '_', '_', '_', '_'],
         ['_', '_', '_', '_', '_', '_', 'w', 'w'],
-        ['_', 'b', '_', '_', '_', '_', 'w', 'w'],
-        ['_', '_', 'w', '_',  'w', 'w', 'w', 'w'],
-        ['_', '_', '_', 'b',  'w', 'w', 'w', 'y']
-    ]),Player1,w).
+        ['_', '_', '_', '_', '_', '_', 'w', 'w'],
+        ['_', '_', '_', '_',  'w', 'w', 'w', 'w'],
+        ['_', '_', '_', '_',  'w', 'w', 'w', 'y']
+    ]),Player1,Player2,w).
     
 
     board([
@@ -71,17 +72,45 @@ initial_state((Player1, Player2)) :-
         ['_', '_', '_', '_',  'w', 'w', 'w', 'y']
     ]).
 
-% Display game for computer
-display_game(board(Rows), computer) :-
-    write('Computer is gonna play'), nl.
 
-display_game(board(Rows), human, w) :-           % Display game for white, human
+
+% Display game for computer
+display_game(board(Rows), computer,Player2,w) :-
+    write('Computer (white) is gonna play'), nl,
+    display_board(board(Rows)), nl,
+    choose_move(computer,Play, w, board(Rows)),
+    move(board(Rows), w, Play, NewBoard),
+    ( 
+        (game_over(board(Rows), Play, Winner) ; game_over(NewBoard, Winner)),
+        (Winner = 'b' -> write('Black is the winner !!!'), nl;
+         Winner = 'w' -> write('White is the winner !!!'), nl),
+        display_board(NewBoard),play
+    ;
+        display_game(NewBoard, Player2,computer, b)        % Continue the game if no winner
+    ).
+
+display_game(board(Rows), computer,Player2,b) :-
+    write('Computer (black) is gonna play'), nl,
+    display_board(board(Rows)), nl,
+    choose_move(computer,Play, b, board(Rows)),
+    move(board(Rows), b, Play, NewBoard),
+    ( 
+        (game_over(board(Rows), Play, Winner) ; game_over(NewBoard, Winner)),
+        (Winner = 'b' -> write('Black is the winner !!!'), nl;
+         Winner = 'w' -> write('White is the winner !!!'), nl),
+        display_board(NewBoard),play
+    ;
+        display_game(NewBoard, Player2,computer, w)        % Continue the game if no winner
+    ).
+
+
+display_game(board(Rows), human, Player2, w) :-           % Display game for white, human
     write('White to play'), nl,
     display_board(board(Rows)), nl,
     valid_moves(board(Rows),w,Moves),
     display_moves(Moves),
     write('Insert your play: '), nl,
-    read_move(Play, w, board(Rows)),
+    choose_move(Play, w, board(Rows)),
     write('Good move!'), nl,
     move(board(Rows), w, Play, NewBoard),
     ( 
@@ -90,16 +119,16 @@ display_game(board(Rows), human, w) :-           % Display game for white, human
          Winner = 'w' -> write('White is the winner !!!'), nl),
         display_board(NewBoard),play
     ;
-        display_game(NewBoard, human, b)        % Continue the game if no winner
+        display_game(NewBoard, Player2,human, b)        % Continue the game if no winner
     ).
 
-display_game(board(Rows), human,b) :-        %display game for black, human
+display_game(board(Rows), human,Player2,b) :-        %display game for black, human
     write('Black to play'), nl,
     display_board(board(Rows)), nl,
     valid_moves(board(Rows),b,Moves),
     display_moves(Moves),
     write('Insert your play: '),nl,
-    read_move(Play,b,board(Rows)),
+    choose_move(Play,b,board(Rows)),
     write('good move!'),nl,
     move(board(Rows),b,Play,NewBoard),
     (   
@@ -108,9 +137,14 @@ display_game(board(Rows), human,b) :-        %display game for black, human
          Winner = 'w' -> write('White is the winner !!!'), nl),
         display_board(NewBoard),play  
     ;   
-        display_game(NewBoard, human, w)        % Continue the game if no winner
+        display_game(NewBoard, Player2,human, w)        % Continue the game if no winner
     ).
    
+
+
+
+
+
    display_moves([]) :- write('No more valid moves available.'), nl.
 display_moves([((X1, Y1), (X2, Y2)) | Rest]) :-
     format('From (~w, ~w) to (~w, ~w). ', [X1, Y1, X2, Y2]), 
@@ -279,24 +313,29 @@ between(Low, High, Value) :-
 
 
 
+choose_move(computer,Play, w, board(Rows)):-
+    valid_moves(board(Rows),w,Moves),
+    random_member(Play,Moves).
+
+choose_move(computer,Play, b, board(Rows)):-
+    valid_moves(board(Rows),b,Moves),
+    random_member(Play,Moves).
 
 
-
-
-read_move(Play, w, board(Rows)) :-
+choose_move(Play, w, board(Rows)) :-
     write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,
     catch(
         (read_safe(Input), validate_and_handle_input(Input, Play, w, board(Rows))),
         invalid_input,
-        (write('Invalid input format. Try again.'), nl, read_move(Play, w, board(Rows)))
+        (write('Invalid input format. Try again.'), nl, choose_move(Play, w, board(Rows)))
     ).
 
-read_move(Play, b, board(Rows)) :-
+choose_move(Play, b, board(Rows)) :-
     write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,
     catch(
         (read_safe(Input), validate_and_handle_input(Input, Play, b, board(Rows))),
         invalid_input,
-        (write('Invalid input format. Try again.'), nl, read_move(Play, b, board(Rows)))
+        (write('Invalid input format. Try again.'), nl, choose_move(Play, b, board(Rows)))
     ).
 
 
@@ -324,7 +363,7 @@ validate_and_handle_input(Input, Play, w, board(Rows)) :-
         true
     ;
         write('Invalid move. Try again.'), nl,
-        read_move(Play, w, board(Rows))
+        choose_move(Play, w, board(Rows))
     ).
 
 validate_and_handle_input(Input, Play, b, board(Rows)) :-
@@ -333,7 +372,7 @@ validate_and_handle_input(Input, Play, b, board(Rows)) :-
         true
     ;
         write('Invalid move. Try again.'), nl,
-        read_move(Play, b, board(Rows))
+        choose_move(Play, b, board(Rows))
     ).
 
 
@@ -502,12 +541,14 @@ check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-         %black diagon
     DiffY is Y2 - Y1,
     DiffX =:= DiffY,        % Ensure diagonal path
     DiffX > 0,              % Moving in (1, 1) direction
-    write('Checking diagonal jump for black: '), 
-    write(((X1, Y1), (X2, Y2))), nl,
+    %write('Checking diagonal jump for black: '), 
+    %write(((X1, Y1), (X2, Y2))), nl,
     (
         diagonal_pathb(board(Rows), X1, Y1, X2, Y2) 
         -> Value = 'True';  % Path is valid
-        (write('Diagonal path invalid.'), nl,Value = 'False' )    % Path is invalid
+        (
+            /*write('Diagonal path invalid.'), nl,*/
+            Value = 'False' )    % Path is invalid
     ).
 
 check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-              %horizontal black jump check
@@ -609,7 +650,7 @@ diagonal_pathb(board(Rows), X1, Y1, X2, Y2) :-
 diagonal_pathb(board(Rows), X1, Y1, X2, Y2) :-
     X1 \= X2,
     Y1 \= Y2,
-    write('invalid intermediate piece?'),
+    %write('invalid intermediate piece?'),
     get_element(board(Rows), X1, Y1, Element),
     \+ (Element = 'b'; Element = 'x'),  % Invalid piece for black
     !, fail.
