@@ -654,3 +654,49 @@ get_element(board(Rows), Row, Col, Element) :-
     nth1(Row, Rows, RowList),      
     nth1(Col, RowList, Element).   
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%GREEDY%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+count_symbols([], _, 0).
+count_symbols([Row|Rest], Symbol, Count) :-
+    include(=(Symbol), Row, Filtered),
+    length(Filtered, N),
+    count_symbols(Rest, Symbol, TailCount),
+    Count is N + TailCount.
+
+value(board(Rows), w, Value) :-
+    count_symbols(Rows, 'w', WCount),
+    count_symbols(Rows, 'b', BCount),
+    Value is WCount - BCount.
+
+value(board(Rows), b, Value) :-
+    count_symbols(Rows, 'b', BCount),
+    count_symbols(Rows, 'w', WCount),
+    Value is BCount - WCount.
+
+choose_move(GameState, 1, Move) :- 
+    % Level 1: random
+    findall(M, valid_move(GameState, M), Moves),
+    random_member(Move, Moves).
+
+choose_move(GameState, 2, Move) :-
+    % Level 2: greedy
+    findall(M, valid_move(GameState, M), Moves),
+    best_move(GameState, Moves, Move).
+
+best_move(GameState, [M|Rest], BestMove) :-
+    apply_move(GameState, M, NewState),
+    NewState = board(_Rows),
+    NewState =.. [board, _Rows, CurrentPlayer|_],
+    value(NewState, CurrentPlayer, Val),
+    best_move_aux(GameState, Rest, M, Val, BestMove).
+
+best_move_aux(_, [], BestSoFar, _, BestSoFar).
+best_move_aux(GameState, [M|Rest], CurrentBest, CurrentVal, BestMove) :-
+    apply_move(GameState, M, NewState),
+    NewState =.. [board, _Rows, CurrentPlayer|_],
+    value(NewState, CurrentPlayer, Val),
+    (Val > CurrentVal ->
+        best_move_aux(GameState, Rest, M, Val, BestMove)
+    ;
+        best_move_aux(GameState, Rest, CurrentBest, CurrentVal, BestMove)
+    ).
