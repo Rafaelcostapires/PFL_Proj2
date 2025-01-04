@@ -455,6 +455,8 @@ between(Low, High, Value) :-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%CHOOSE_MOVE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% % %  must have functionality to distinguish between random and greedy  % % %
+
 choose_move(computer,Play, w, board(Rows)):-
     valid_moves(board(Rows),w,Moves),
     random_member(Play,Moves).
@@ -672,16 +674,6 @@ value(board(Rows), b, Value) :-
     count_symbols(Rows, 'b', BCount),
     count_symbols(Rows, 'w', WCount),
     Value is BCount - WCount.
-
-choose_move(board(Rows), Player, 1, Move) :- 
-    % Level 1: random
-    valid_moves(board(Rows), Player, Moves),
-    random_member(Move, Moves).
-
-choose_move(board(Rows), Player, 2, Move) :-
-    % Level 2: greedy
-    valid_moves(board(Rows), Player, Moves),
-    best_move(board(Rows), Player, Moves, Move).
 
 best_move(board(Rows), Player, [M|Rest], BestMove) :-
     move(board(Rows), Player, M, NewBoard),
