@@ -1,5 +1,4 @@
 :- use_module(library(random)).
-:- use_module(library(Lists)).
 
 play :-
     display_menu,
@@ -30,7 +29,7 @@ read_option(_) :-
     display_menu,
     read_option(Option).
 
-% Handles the chosen option from the menu
+
 handle_option(1) :-
     write('Starting Human vs Human mode...'), nl,
     initial_state((human, human)).
@@ -46,7 +45,7 @@ handle_option(4) :-
 handle_option(5) :-
     write('Exiting the game. Goodbye!'), nl.
 
-% Placeholder for starting the game with the given configurations
+
 initial_state((Player1, Player2)) :-
     write('Game starting... (Player 1: '), write(Player1), write(', Player 2: '), write(Player2), write(')'), nl,
     display_game(board([
@@ -73,38 +72,38 @@ initial_state((Player1, Player2)) :-
     ]).
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%DISPLAY%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Display game for computer
-display_game(board(Rows), computer,Player2,w) :-
+display_game(board(Rows), computer,Player2,w) :-            %Display game for computer
     write('Computer (white) is gonna play'), nl,
     display_board(board(Rows)), nl,
     choose_move(computer,Play, w, board(Rows)),
     move(board(Rows), w, Play, NewBoard),
     ( 
-        (game_over(board(Rows), Play, Winner) ; game_over(NewBoard, Winner)),
+        (game_over(board(Rows), Play, Winner) ; game_over(NewBoard, Winner)), %check if game is over
         (Winner = 'b' -> write('Black is the winner !!!'), nl;
          Winner = 'w' -> write('White is the winner !!!'), nl),
         display_board(NewBoard),play
     ;
-        display_game(NewBoard, Player2,computer, b)        % Continue the game if no winner
+        display_game(NewBoard, Player2,computer, b)        %Continue the game if no winner
     ).
 
-display_game(board(Rows), computer,Player2,b) :-
+display_game(board(Rows), computer,Player2,b) :-            %Display game for white, computer
     write('Computer (black) is gonna play'), nl,
     display_board(board(Rows)), nl,
     choose_move(computer,Play, b, board(Rows)),
     move(board(Rows), b, Play, NewBoard),
     ( 
-        (game_over(board(Rows), Play, Winner) ; game_over(NewBoard, Winner)),
+        (game_over(board(Rows), Play, Winner) ; game_over(NewBoard, Winner)),       %check if game is over
         (Winner = 'b' -> write('Black is the winner !!!'), nl;
          Winner = 'w' -> write('White is the winner !!!'), nl),
         display_board(NewBoard),play
     ;
-        display_game(NewBoard, Player2,computer, w)        % Continue the game if no winner
+        display_game(NewBoard, Player2,computer, w)        %Continue the game if no winner
     ).
 
 
-display_game(board(Rows), human, Player2, w) :-           % Display game for white, human
+display_game(board(Rows), human, Player2, w) :-           %Display game for white, human
     write('White to play'), nl,
     display_board(board(Rows)), nl,
     valid_moves(board(Rows),w,Moves),
@@ -141,35 +140,64 @@ display_game(board(Rows), human,Player2,b) :-        %display game for black, hu
     ).
    
 
-
-
-
-
    display_moves([]) :- write('No more valid moves available.'), nl.
 display_moves([((X1, Y1), (X2, Y2)) | Rest]) :-
     format('From (~w, ~w) to (~w, ~w). ', [X1, Y1, X2, Y2]), 
     display_moves(Rest).
 
-game_over(board(Rows),((X1,Y1),(X2,Y2)),'b'):-      %Game over function
+
+display_board(board(Rows)) :-           %function to display the board in the correct format
+       
+    length(Rows, RowCount),          
+    display_rows_from_bottom(Rows, RowCount),
+    write('  1 2 3 4 5 6 7 8'). 
+
+
+display_rows_from_bottom(_, 0).       %helper for displaying each row
+display_rows_from_bottom(Rows, Index) :-
+    nth1(Index, Rows, Row),           
+    write(Index), write(' '),         
+    display_row(Row),                 
+    nl,                               
+    PrevIndex is Index - 1,           
+    display_rows_from_bottom(Rows, PrevIndex). 
+
+
+display_row([]).                        %helper for displaying each element in a row
+display_row([Cell|Rest]) :-
+    display_cell(Cell),               
+    write(' '),                      
+    display_row(Rest).               
+
+
+display_cell(Cell) :-                   %helper to display empty cells
+    (   var(Cell)                     
+    ->  write('_')                   
+    ;   write(Cell)
+    ).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%GAMEOVER%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+game_over(board(Rows),((X1,Y1),(X2,Y2)),'b'):-      %Game over if king is eaten
     get_element(board(Rows),X2,Y2,'y').
+
 game_over(board(Rows),((X1,Y1),(X2,Y2)),'w'):-
     get_element(board(Rows),X2,Y2,'x').
 
-game_over(board(Rows), 'b') :-                      %Game over function
+game_over(board(Rows), 'b') :-                      %Game over if king is on the enemy corner
     get_element(board(Rows), 8, 8, 'x'), !.
 
 game_over(board(Rows), 'w') :-
     get_element(board(Rows), 1, 1, 'y').
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%MOVE_CHECKS%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
-
-check_transform((X1, Y1), w, board(Rows), Value) :-
+check_transform((X1, Y1), w, board(Rows), Value) :-                         %check transform white
     get_element(board(Rows), X1, Y1, Element),
     (   Element \= 'w'                                                     
     ->  Value = 'False', !                                                
-    ;                                 %check transform white
+    ;                                 
     (   search_direction((X1, Y1),  0,  1, Rows, 'y') -> Value = 'True' 
     ;   search_direction((X1, Y1),  0, -1, Rows, 'y') -> Value = 'True' 
     ;   search_direction((X1, Y1),  1,  0, Rows, 'y') -> Value = 'True' 
@@ -178,11 +206,11 @@ check_transform((X1, Y1), w, board(Rows), Value) :-
     ;   search_direction((X1, Y1),  1, -1, Rows, 'y') -> Value = 'True' 
     ;   search_direction((X1, Y1), -1,  1, Rows, 'y') -> Value = 'True' 
     ;   search_direction((X1, Y1), -1, -1, Rows, 'y') -> Value = 'True' 
-    ;   Value = 'False' % Default if 'y' is not found in any direction
+    ;   Value = 'False' 
     )
     ).
 
-check_transform((X1, Y1), b, board(Rows), Value) :-                         % Check transform black
+check_transform((X1, Y1), b, board(Rows), Value) :-                         %Check transform black
     get_element(board(Rows), X1, Y1, Element),
     (   Element \= 'b'                                                     
     ->  Value = 'False', !                                                
@@ -194,300 +222,37 @@ check_transform((X1, Y1), b, board(Rows), Value) :-                         % Ch
         ;   search_directionb((X1, Y1),  1, -1, Rows, 'x') -> Value = 'True' 
         ;   search_directionb((X1, Y1), -1,  1, Rows, 'x') -> Value = 'True' 
         ;   search_directionb((X1, Y1), -1, -1, Rows, 'x') -> Value = 'True' 
-        ;   Value = 'False'                                                % Default if 'x' is not found in any direction
+        ;   Value = 'False'                                                
         )
     ).
 
-search_direction((X, Y), DX, DY, Rows, Target) :-
+search_direction((X, Y), DX, DY, Rows, Target) :-                   %helper for checking line of sight in a direction for white
     NX is X + DX,
     NY is Y + DY,
     within_bounds(NX, NY),
     get_element(board(Rows), NX, NY, Element),
     (   Element = Target  % Found target
-    ;   (Element \= 'b', Element \= 'x', search_direction((NX, NY), DX, DY, Rows, Target))  % Continue only if valid
-    ), !.  % Cut to prevent excessive backtracking
+    ;   (Element \= 'b', Element \= 'x', search_direction((NX, NY), DX, DY, Rows, Target)) 
+    ), !.  
+
+search_directionb((X, Y), DX, DY, Rows, Target) :-                  %helper for checking line of sight in a direction for black
+    NX is X + DX,
+    NY is Y + DY,
+    within_bounds(NX, NY),              
+    get_element(board(Rows), NX, NY, Element),
+    (   Element = Target               
+    ;   Element \= 'w', Element \= 'y', 
+        search_directionb((NX, NY), DX, DY, Rows, Target) 
+    ).
 
 
-
-within_bounds(X, Y) :-
+within_bounds(X, Y) :-            %helper for checking if coordinates are inside the board
     X > 0, X =< 8,
     Y > 0, Y =< 8.
 
 
 
 
-search_directionb((X, Y), DX, DY, Rows, Target) :-
-    NX is X + DX,
-    NY is Y + DY,
-    within_bounds(NX, NY),              
-    get_element(board(Rows), NX, NY, Element),
-    (   Element = Target               % If the Target is found, succeed
-    ;   Element \= 'w', Element \= 'y', 
-        search_directionb((NX, NY), DX, DY, Rows, Target) % Continue searching with recursion
-    ).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-valid_moves(board(Rows), b, Moves) :-
-    findall(
-        ((X1, Y1), (X2, Y2)), 
-        (
-            % Iterate over all possible positions (X1, Y1)
-            between(1, 8, X1),
-            between(1, 8, Y1),
-            % Check that the starting position contains 'x' or 'b'
-            get_element(board(Rows),X1,Y1,Element),
-            (Element = 'x'; Element = 'b'),
-            % Iterate over all possible target positions (X2, Y2)
-            between(1, 8, X2),
-            between(1, 8, Y2),
-            % Validate the move
-            validate_move(((X1, Y1), (X2, Y2)), b, board(Rows), Valid, _),
-            Valid = 'True'
-        ), 
-        RawMoves
-    ),
-    % Remove duplicates from RawMoves
-    sort(RawMoves, Moves),
-    % Calculate the number of valid moves
-    length(Moves, Count),
-    % Write the count to the terminal
-    write('Number of valid moves: '), write(Count), nl.
-
-valid_moves(board(Rows), w, Moves) :-
-    findall(
-        ((X1, Y1), (X2, Y2)), 
-        (   
-            % Iterate over all possible positions (X1, Y1)
-            between(1, 8, X1),
-            between(1, 8, Y1),
-            % Check that the starting position contains 'x' or 'b'
-            get_element(board(Rows),X1,Y1,Element),
-            (Element = 'y'; Element = 'w'),
-            % Iterate over all possible target positions (X2, Y2)
-            between(1, 8, X2),
-            between(1, 8, Y2),
-            % Validate the move
-            validate_move(((X1, Y1), (X2, Y2)), w, board(Rows), Valid, ((X1, Y1), (X2, Y2))),
-            Valid = 'True'
-        ), 
-        RawMoves
-    ),
-    % Remove duplicates from RawMoves
-    sort(RawMoves, Moves),
-    % Calculate the number of valid moves
-    length(Moves, Count),
-    % Write the count to the terminal
-    write('Number of valid moves: '), write(Count), nl.    
-
-
-
-
-
-
-
-
-% Ensure Low, High, and Value are integers
-between(Low, High, Low) :-
-    integer(Low),
-    integer(High),
-    Low =< High.
-
-between(Low, High, Value) :-
-    integer(Low),
-    integer(High),
-    Low < High,
-    Next is Low + 1,
-    between(Next, High, Value).
-
-
-
-
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-
-
-
-choose_move(computer,Play, w, board(Rows)):-
-    valid_moves(board(Rows),w,Moves),
-    random_member(Play,Moves).
-
-choose_move(computer,Play, b, board(Rows)):-
-    valid_moves(board(Rows),b,Moves),
-    random_member(Play,Moves).
-
-
-choose_move(Play, w, board(Rows)) :-
-    write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,
-    catch(
-        (read_safe(Input), validate_and_handle_input(Input, Play, w, board(Rows))),
-        invalid_input,
-        (write('Invalid input format. Try again.'), nl, choose_move(Play, w, board(Rows)))
-    ).
-
-choose_move(Play, b, board(Rows)) :-
-    write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,
-    catch(
-        (read_safe(Input), validate_and_handle_input(Input, Play, b, board(Rows))),
-        invalid_input,
-        (write('Invalid input format. Try again.'), nl, choose_move(Play, b, board(Rows)))
-    ).
-
-
-
-read_safe(Input) :-
-    catch(
-        (read(Input), validate_input(Input)),  % Read and validate input
-        _Error,
-        (write('Invalid input. Try again.'), nl, read_safe(Input))  % Catch syntax errors
-    ).
-
-validate_input(((X1, Y1), (X2, Y2))) :-
-    integer(X1), integer(Y1), integer(X2), integer(Y2),  % Ensure all components are integers
-    between(1, 8, X1), between(1, 8, Y1),               % Ensure within bounds
-    between(1, 8, X2), between(1, 8, Y2), !.            % Cut to prevent backtracking
-
-validate_input(_) :-
-    throw(invalid_input).  % Throw an exception for invalid terms
-
-
-
-validate_and_handle_input(Input, Play, w, board(Rows)) :-
-    validate_move(Input, w, board(Rows), Valid, Play),
-    (Valid = 'True' ->
-        true
-    ;
-        write('Invalid move. Try again.'), nl,
-        choose_move(Play, w, board(Rows))
-    ).
-
-validate_and_handle_input(Input, Play, b, board(Rows)) :-
-    validate_move(Input, b, board(Rows), Valid, Play),
-    (Valid = 'True' ->
-        true
-    ;
-        write('Invalid move. Try again.'), nl,
-        choose_move(Play, b, board(Rows))
-    ).
-
-
-validate_move(Input, w, board(Rows), Valid, Play) :-
-    Input = ((X1, Y1), (X2, Y2)),
-    % Check source element
-    get_element(board(Rows), X1, Y1, Element),
-    (Element = 'w'; Element = 'y'),
-    % Check bounds for source and destination
-    within_bounds(X1, Y1),
-    within_bounds(X2, Y2),
-    % Check destination element
-    get_element(board(Rows), X2, Y2, Element1),
-
-    (
-        % Transform move
-        Element = 'w',
-        X1 =:= X2, Y1 =:= Y2,
-        check_transform((X1, Y1), w, board(Rows), Value),
-        Value = 'True',
-        %write('Valid transform!'), nl,
-        Play = Input, Valid = 'True',!
-    ;
-        % Simple move
-        (X1 \= X2; Y1 \= Y2),
-        (Element1 = '_';Element1='b';Element1='x'), 
-        validate_simple_move_w(X1, Y1, X2, Y2),
-        %write('Valid move!'), nl,
-        Play = Input, Valid = 'True',!
-    ;
-        % Jump move
-        (X1 \= X2; Y1 \= Y2),
-        (Element1 = '_';Element1='b';Element1='x'),
-        check_jump(board(Rows), w, Input, Value),
-        Value = 'True',
-        %write('Valid jump!'), nl,
-        Play = Input, Valid = 'True',!
-    ;
-        % Invalid move
-        Valid = 'False'
-    ).
-
-
-validate_move(Input, b, board(Rows), Valid, Play) :-
-    Input = ((X1, Y1), (X2, Y2)),
-    % Check source element
-    get_element(board(Rows), X1, Y1, Element),
-    (Element = 'b'; Element = 'x'),
-    % Check bounds for source and destination
-    within_bounds(X1, Y1),
-    within_bounds(X2, Y2),
-    % Check destination element
-    get_element(board(Rows), X2, Y2, Element1),
-
-    (
-        % Transform move
-        Element = 'b',
-        X1 =:= X2, Y1 =:= Y2,
-        check_transform((X1, Y1), b, board(Rows), Value),
-        Value = 'True',
-        %write('Valid transform!'), nl,
-        Play = Input, Valid = 'True',!
-    ;
-        % Simple move
-        (Element1 = '_';Element1='w';Element1='y'), 
-        validate_simple_move(X1, Y1, X2, Y2),
-        %write('Valid move!'), nl,
-        Play = Input, Valid = 'True',!
-    ;
-        % Jump move
-        (Element1 = '_';Element1='w';Element1='y'),
-        check_jump(board(Rows), b, Input, Value),
-        Value = 'True',
-        %write('Valid jump!'), nl,
-        Play = Input, Valid = 'True',!
-    ;
-        % Invalid move
-        Valid = 'False'
-    ).
-
-validate_simple_move(X1, Y1, X2, Y2) :-
-    (Y2 - Y1 =:= 1, X2 - X1 =:= 1);
-    (X2 - X1 =:= 1, Y2 - Y1 =:= 0);
-    (Y2 - Y1 =:= 0, X2 - X1 =:= 1).
-
-
-validate_simple_move_w(X1, Y1, X2, Y2) :-
-    (Y2 - Y1 =:= -1, X2 - X1 =:= -1);
-    (X2 - X1 =:= -1, Y2 - Y1 =:= 0);
-    (Y2 - Y1 =:= 0, X2 - X1 =:= -1).
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-% Predicate to check jump validity
 check_jump(board(Rows), w, ((X1, Y1), (X2, Y2)), Value) :-          %horizontal white jump check
     X2 - X1 =:= 0,
     N is Y1 - Y2,
@@ -497,7 +262,7 @@ check_jump(board(Rows), w, ((X1, Y1), (X2, Y2)), Value) :-          %horizontal 
     (Element2 = 'w'; Element2 = 'y'),
     check_jump(board(Rows), w, ((X1, YNext), (X2, Y2)), Value).
 
-check_jump(board(Rows), w, ((X1, Y1), (X2, Y2)), Value) :-          %horizontal white jump check
+check_jump(board(Rows), w, ((X1, Y1), (X2, Y2)), Value) :-          %horizontal white jump check base case
     X2 - X1 =:= 0,
     N is Y1 - Y2,
     N =:= 1,
@@ -514,7 +279,7 @@ check_jump(board(Rows), w, ((X1, Y1), (X2, Y2)), Value) :-          %vertical wh
     (Element2 = 'w'; Element2 = 'y'),
     check_jump(board(Rows), w, ((XNext, Y1), (X2, Y2)), Value).
 
-check_jump(board(Rows), w, ((X1, Y1), (X2, Y2)), Value) :-          %vertical white jump check
+check_jump(board(Rows), w, ((X1, Y1), (X2, Y2)), Value) :-          %vertical white jump check base case
     Y2 - Y1 =:= 0,
     N is X1 - X2,
     N =:= 1,
@@ -522,37 +287,30 @@ check_jump(board(Rows), w, ((X1, Y1), (X2, Y2)), Value) :-          %vertical wh
 
 
 check_jump(board(Rows), w, ((X1, Y1), (X2, Y2)), Value) :-         %white diagonal jump
-    % Diagonal white jump check
     DiffX is X2 - X1,
     DiffY is Y2 - Y1,
-    DiffX =:= DiffY,        % Ensure diagonal path
-    DiffX < 0,              % Moving in (-1, -1) direction
-    %write('Checking diagonal jump for white: '), 
-    %write(((X1, Y1), (X2, Y2))), nl,
+    DiffX =:= DiffY,        
+    DiffX < 0,              
     (
         diagonal_path(board(Rows), X1, Y1, X2, Y2) 
-        -> Value = 'True';  % Path is valid
-        Value = 'False'     % Path is invalid
+        -> Value = 'True'; 
+        Value = 'False'     
     ).
 
 check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-         %black diagonal jump 
-    % Diagonal black jump check
     DiffX is X2 - X1,
     DiffY is Y2 - Y1,
-    DiffX =:= DiffY,        % Ensure diagonal path
-    DiffX > 0,              % Moving in (1, 1) direction
-    %write('Checking diagonal jump for black: '), 
-    %write(((X1, Y1), (X2, Y2))), nl,
+    DiffX =:= DiffY,        
+    DiffX > 0,              
     (
         diagonal_pathb(board(Rows), X1, Y1, X2, Y2) 
-        -> Value = 'True';  % Path is valid
+        -> Value = 'True'; 
         (
-            /*write('Diagonal path invalid.'), nl,*/
-            Value = 'False' )    % Path is invalid
+            
+            Value = 'False' )    
     ).
 
-check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-              %horizontal black jump check
-    % Recursive horizontal black jump check
+check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-              %horizontal black jump check base 
     X1 - X2 =:= 0,
     N is Y2 - Y1,
     N > 1,
@@ -561,7 +319,7 @@ check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-              %horizon
     (Element = 'b'; Element = 'x'), % Ensure valid intermediate pieces
     check_jump(board(Rows), b, ((X1, YNext), (X2, Y2)), Value).
 
-check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-              %horizontal black jump check
+check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-              %horizontal black jump check base case
     % Final destination check for horizontal black jump
     X2 - X1 =:= 0,
     N is Y2 - Y1,
@@ -582,83 +340,251 @@ check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-              %vertica
     (Element = 'b'; Element = 'x'), % Ensure valid intermediate pieces
     check_jump(board(Rows), b, ((XNext, Y1), (X2, Y2)), Value).
 
-check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-               %vertical black jump check
+check_jump(board(Rows), b, ((X1, Y1), (X2, Y2)), Value) :-               %vertical black jump check base case
     % Final destination check for vertical black jump
     Y2 - Y1 =:= 0,
     N is X2 - X1,
     N =:= 1,
-    get_element(board(Rows), X2, Y2, Element), % Fix: Check the target position
-    (Element = '_'; Element = 'w'; Element = 'y'), % Fix: Ensure valid destination for black
+    get_element(board(Rows), X2, Y2, Element), 
+    (Element = '_'; Element = 'w'; Element = 'y'), 
     Value = 'True'.
 
+check_jump(_, _, _, 'False').                           %check jump base case
 
-
-
-    
-
-
-
-check_jump(_, _, _, 'False').
-
-
-
-diagonal_path(board(Rows), X1, Y1, X2, Y2) :-           
-    % Base case: Reached the destination
+diagonal_path(board(Rows), X1, Y1, X2, Y2) :-           %helper for white diagonal jump base case
     X1 =:= X2,
     Y1 =:= Y2,
     get_element(board(Rows), X1, Y1, Element),
     (Element = '_'; Element = 'b'; Element = 'x').  % Valid destination for white
 
-diagonal_path(board(Rows), X1, Y1, X2, Y2) :-
-    % Recursive step: Check current position and move diagonally
+diagonal_path(board(Rows), X1, Y1, X2, Y2) :-           %helper for white diagonal jump
     X1 \= X2,
     Y1 \= Y2,
     get_element(board(Rows), X1, Y1, Element),
-    (Element = 'w'; Element = 'y'),  % Valid intermediate pieces for white
+    (Element = 'w'; Element = 'y'),  
     XNext is X1 - 1,
     YNext is Y1 - 1,
     diagonal_path(board(Rows), XNext, YNext, X2, Y2).
 
-% Add failure case for invalid intermediate pieces
-diagonal_path(board(Rows), X1, Y1, X2, Y2) :-
+diagonal_path(board(Rows), X1, Y1, X2, Y2) :-           %helper to identify diagonals with enemy pieces
     X1 \= X2,
     Y1 \= Y2,
     get_element(board(Rows), X1, Y1, Element),
-    \+ (Element = 'w'; Element = 'y'),  % Invalid piece for white
+    \+ (Element = 'w'; Element = 'y'),  
     !, fail.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%white black diagonals%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-diagonal_pathb(board(Rows), X1, Y1, X2, Y2) :-           
-    % Base case: Reached the destination
+diagonal_pathb(board(Rows), X1, Y1, X2, Y2) :-       %helper for black diagonal jump base case    
     X1 =:= X2,
     Y1 =:= Y2,
     get_element(board(Rows), X1, Y1, Element),
-    (Element = '_'; Element = 'w'; Element = 'y').  % Valid destination for black
+    (Element = '_'; Element = 'w'; Element = 'y').  %Valid destination for black
 
-diagonal_pathb(board(Rows), X1, Y1, X2, Y2) :-
-    % Recursive step: Check current position and move diagonally
+diagonal_pathb(board(Rows), X1, Y1, X2, Y2) :-              %helper for black diagonal jump
     X1 \= X2,
     Y1 \= Y2,
     get_element(board(Rows), X1, Y1, Element),
-    (Element = 'b'; Element = 'x'),  % Valid intermediate pieces for black
+    (Element = 'b'; Element = 'x'),  
     XNext is X1 + 1,
     YNext is Y1 + 1,
     diagonal_pathb(board(Rows), XNext, YNext, X2, Y2).
 
-% Add failure case for invalid intermediate pieces
-diagonal_pathb(board(Rows), X1, Y1, X2, Y2) :-
+
+diagonal_pathb(board(Rows), X1, Y1, X2, Y2) :-          %helper to identify diagonals with enemy pieces
     X1 \= X2,
     Y1 \= Y2,
-    %write('invalid intermediate piece?'),
     get_element(board(Rows), X1, Y1, Element),
-    \+ (Element = 'b'; Element = 'x'),  % Invalid piece for black
+    \+ (Element = 'b'; Element = 'x'),  
     !, fail.
 
 
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%VALID_MOVES%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+valid_moves(board(Rows), b, Moves) :-
+    findall(
+        ((X1, Y1), (X2, Y2)), 
+        (
+            between(1, 8, X1),
+            between(1, 8, Y1),
+            get_element(board(Rows),X1,Y1,Element),
+            (Element = 'x'; Element = 'b'),
+            between(1, 8, X2),
+            between(1, 8, Y2),
+            validate_move(((X1, Y1), (X2, Y2)), b, board(Rows), Valid, _),
+            Valid = 'True'
+        ), 
+        RawMoves
+    ),    
+    sort(RawMoves, Moves),      %Remove duplicates 
+    length(Moves, Count),
+    write('Number of valid moves: '), write(Count), nl.
+
+valid_moves(board(Rows), w, Moves) :-
+    findall(
+        ((X1, Y1), (X2, Y2)), 
+        (   
+            between(1, 8, X1),
+            between(1, 8, Y1),
+            get_element(board(Rows),X1,Y1,Element),
+            (Element = 'y'; Element = 'w'),
+            between(1, 8, X2),
+            between(1, 8, Y2),
+            validate_move(((X1, Y1), (X2, Y2)), w, board(Rows), Valid, ((X1, Y1), (X2, Y2))),
+            Valid = 'True'
+        ), 
+        RawMoves
+    ),    
+    sort(RawMoves, Moves),          %Remove duplicates 
+    length(Moves, Count),
+    write('Number of valid moves: '), write(Count), nl.    
+
+between(Low, High, Low) :-
+    integer(Low),
+    integer(High),
+    Low =< High.
+
+between(Low, High, Value) :-
+    integer(Low),
+    integer(High),
+    Low < High,
+    Next is Low + 1,
+    between(Next, High, Value).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%CHOOSE_MOVE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+choose_move(computer,Play, w, board(Rows)):-
+    valid_moves(board(Rows),w,Moves),
+    random_member(Play,Moves).
+
+choose_move(computer,Play, b, board(Rows)):-
+    valid_moves(board(Rows),b,Moves),
+    random_member(Play,Moves).
+
+choose_move(Play, w, board(Rows)) :-
+    write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,
+    catch(
+        (read_safe(Input), validate_and_handle_input(Input, Play, w, board(Rows))),
+        invalid_input,
+        (write('Invalid input format. Try again.'), nl, choose_move(Play, w, board(Rows)))
+    ).
+
+choose_move(Play, b, board(Rows)) :-
+    write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,
+    catch(
+        (read_safe(Input), validate_and_handle_input(Input, Play, b, board(Rows))),
+        invalid_input,
+        (write('Invalid input format. Try again.'), nl, choose_move(Play, b, board(Rows)))
+    ).
+
+read_safe(Input) :-
+    catch(
+        (read(Input), validate_input(Input)),  
+        _Error,
+        (write('Invalid input. Try again.'), nl, read_safe(Input))  %Catch syntax errors
+    ).
+
+validate_input(((X1, Y1), (X2, Y2))) :-
+    integer(X1), integer(Y1), integer(X2), integer(Y2),  
+    between(1, 8, X1), between(1, 8, Y1),               
+    between(1, 8, X2), between(1, 8, Y2), !.            
+
+validate_input(_) :-
+    throw(invalid_input).  %Throw an exception for invalid terms
+
+validate_and_handle_input(Input, Play, w, board(Rows)) :-
+    validate_move(Input, w, board(Rows), Valid, Play),
+    (Valid = 'True' ->
+        true
+    ;
+        write('Invalid move. Try again.'), nl,
+        choose_move(Play, w, board(Rows))
+    ).
+
+validate_and_handle_input(Input, Play, b, board(Rows)) :-
+    validate_move(Input, b, board(Rows), Valid, Play),
+    (Valid = 'True' ->
+        true
+    ;
+        write('Invalid move. Try again.'), nl,
+        choose_move(Play, b, board(Rows))
+    ).
+
+validate_move(Input, w, board(Rows), Valid, Play) :-            %validate a white move
+    Input = ((X1, Y1), (X2, Y2)),
+    get_element(board(Rows), X1, Y1, Element),
+    (Element = 'w'; Element = 'y'),
+    within_bounds(X1, Y1),
+    within_bounds(X2, Y2),
+    get_element(board(Rows), X2, Y2, Element1),
+
+    (
+        Element = 'w',                  %Transform move
+        X1 =:= X2, Y1 =:= Y2,
+        check_transform((X1, Y1), w, board(Rows), Value),
+        Value = 'True',
+        %write('Valid transform!'), nl,
+        Play = Input, Valid = 'True',!
+    ;           
+        (Element1 = '_';Element1='b';Element1='x'), %Simple move
+        validate_simple_move_w(X1, Y1, X2, Y2),
+        %write('Valid move!'), nl,
+        Play = Input, Valid = 'True',!
+    ;          
+        (Element1 = '_';Element1='b';Element1='x'), %Jump move
+        check_jump(board(Rows), w, Input, Value),
+        Value = 'True',
+        %write('Valid jump!'), nl,
+        Play = Input, Valid = 'True',!
+    ;
+        Valid = 'False'             %Invalid move
+    ).
+
+
+validate_move(Input, b, board(Rows), Valid, Play) :-        %validate a black move
+    Input = ((X1, Y1), (X2, Y2)),
+    get_element(board(Rows), X1, Y1, Element),
+    (Element = 'b'; Element = 'x'),
+    within_bounds(X1, Y1),
+    within_bounds(X2, Y2),
+    get_element(board(Rows), X2, Y2, Element1),
+
+    (        
+        Element = 'b',          %Transform move
+        X1 =:= X2, Y1 =:= Y2,
+        check_transform((X1, Y1), b, board(Rows), Value),
+        Value = 'True',
+        %write('Valid transform!'), nl,
+        Play = Input, Valid = 'True',!
+    ;
+        (Element1 = '_';Element1='w';Element1='y'), %Simple move
+        validate_simple_move(X1, Y1, X2, Y2),
+        %write('Valid move!'), nl,
+        Play = Input, Valid = 'True',!
+    ;
+        
+        (Element1 = '_';Element1='w';Element1='y'), %Jump move
+        check_jump(board(Rows), b, Input, Value),
+        Value = 'True',
+        %write('Valid jump!'), nl,
+        Play = Input, Valid = 'True',!
+    ;
+        Valid = 'False'          %Invalid move
+    ).
+
+validate_simple_move_w(X1, Y1, X2, Y2) :-
+    (Y2 - Y1 =:= -1, X2 - X1 =:= -1);
+    (X2 - X1 =:= -1, Y2 - Y1 =:= 0);
+    (Y2 - Y1 =:= 0, X2 - X1 =:= -1).
+
+validate_simple_move(X1, Y1, X2, Y2) :-
+    (Y2 - Y1 =:= 1, X2 - X1 =:= 1);
+    (X2 - X1 =:= 1, Y2 - Y1 =:= 0);
+    (Y2 - Y1 =:= 0, X2 - X1 =:= 1).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%MOVE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 move(board(Rows),w,((X1,Y1),(X2,Y2)),NewBoard):-            %transform white
     X1=:=X2,
@@ -685,9 +611,6 @@ move(board(Rows),b,((X1,Y1),(X2,Y2)),NewBoard) :-           %move black
 
 
 
-
-
-
 move(board(Rows),w,((X1,Y1),(X2,Y2)),NewBoard) :-           %move white
     get_element(board(Rows),X2,Y2,'w').
 
@@ -701,70 +624,20 @@ move(board(Rows),w,((X1,Y1),(X2,Y2)),NewBoard) :-           %move white
     replace_element(board(Rows),X1,Y1,'_',NewBoard1),
     replace_element(NewBoard1,X2,Y2,'y',NewBoard).
 
-
-
-
-
-
-
-
-
-% display_board/1: Takes a board and prints it row by row
-display_board(board(Rows)) :-
-       
-    length(Rows, RowCount),          % Get the total number of rows
-    display_rows_from_bottom(Rows, RowCount),
-    write('  1 2 3 4 5 6 7 8'). % Start displaying from the bottom
-
-% display_rows_from_bottom/2: Iterate over rows in reverse order, starting from the last row
-display_rows_from_bottom(_, 0).       % Base case: no more rows to display
-display_rows_from_bottom(Rows, Index) :-
-    nth1(Index, Rows, Row),           % Get the row at position Index
-    write(Index), write(' '),         % Print row index
-    display_row(Row),                 % Print the row contents
-    nl,                               % New line after each row
-    PrevIndex is Index - 1,           % Move to the previous row
-    display_rows_from_bottom(Rows, PrevIndex). % Recursive call for the remaining rows
-
-% display_row/1: Helper predicate to print elements in a single row
-display_row([]).
-display_row([Cell|Rest]) :-
-    display_cell(Cell),               % Print the cell
-    write(' '),                       % Add a space after each cell
-    display_row(Rest).                % Recursive call for the remaining cells
-
-% display_cell/1: Helper predicate to display board elements
-display_cell(Cell) :-
-    (   var(Cell)                     % If the cell is uninstantiated
-    ->  write('_')                    % Display as '_'
-    ;   write(Cell)
-    ).
-
-
-
-
-
-
-
-
-
-
-
-
 replace_element(board(Rows), Row, Col, NewValue, board(NewRows)) :-
-    nth1(Row, Rows, RowList),            % Get the Row-th row
-    replace_in_row(Col, RowList, NewValue, NewRow), % Replace element in the row
-    replace_in_board(Row, Rows, NewRow, NewRows).  % Replace modified row in the board
+    nth1(Row, Rows, RowList),            
+    replace_in_row(Col, RowList, NewValue, NewRow), 
+    replace_in_board(Row, Rows, NewRow, NewRows).  
 
-% Helper predicate to replace an element in a row
-replace_in_row(1, [_|T], NewValue, [NewValue|T]).  % Replace first element in the row
+
+replace_in_row(1, [_|T], NewValue, [NewValue|T]).  
 replace_in_row(Col, [H|T], NewValue, [H|NewRow]) :-
     Col > 1,
     Col1 is Col - 1,
     replace_in_row(Col1, T, NewValue, NewRow).
 
-% Helper predicate to replace a row in the board
-replace_in_board(1, [_|T], NewRow, [NewRow|T]).  % Replace first row in the board
+
+replace_in_board(1, [_|T], NewRow, [NewRow|T]). 
 replace_in_board(Row, [H|T], NewRow, [H|NewBoard]) :-
     Row > 1,
     Row1 is Row - 1,
@@ -778,20 +651,6 @@ nth1(N, [_|T], X) :-
     nth1(N1, T, X).
 
 get_element(board(Rows), Row, Col, Element) :-
-    nth1(Row, Rows, RowList),      % Get the Row-th row (1-based index)
-    nth1(Col, RowList, Element).   % Get the Col-th element from that row
+    nth1(Row, Rows, RowList),      
+    nth1(Col, RowList, Element).   
 
-
-
-
-/*
-% Directions for black and white players
-direction(b, 1, 1).   % Black: Forward (down-right in the matrix)
-direction(b, 1, 0).   % Black: Diagonal left (down in the matrix)
-direction(b, 0, 1).   % Black: Diagonal right (right in the matrix)
-
-direction(w, -1, -1). % White: Forward (up-left in the matrix)
-direction(w, -1, 0).  % White: Diagonal left (up in the matrix)
-direction(w, 0, -1).  % White: Diagonal right (left in the matrix)
-
-*/
