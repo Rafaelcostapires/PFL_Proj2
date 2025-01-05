@@ -661,52 +661,141 @@ value(board(Rows), Player, Value) :-
             get_opponent_non_kings(board(Rows), Player, OpponentNonKings),
             get_opponent_kings(board(Rows), Player, OpponentKings),
 
-            % Calculate proximity score
-            proximity_score(board(Rows), Player, PlayerNonKings, PlayerKings, PlayerScore),
-            proximity_score(board(Rows), Opponent, OpponentNonKings, OpponentKings, OpponentScore),
+            % Calculate Material Count
+            length(PlayerNonKings, NumPlayerNonKings),
+            length(PlayerKings, NumPlayerKings),
+            length(OpponentNonKings, NumOpponentNonKings),
+            length(OpponentKings, NumOpponentKings),
+            MaterialScore is (NumPlayerNonKings + 3 * NumPlayerKings) - 
+                            (NumOpponentNonKings + 3 * NumOpponentKings),
+            
+            % Calculate Positional Advantage
+            positional_advantage(board(Rows), Player, PlayerPos),
+            positional_advantage(board(Rows), Opponent, OpponentPos),
+            PositionalScore is PlayerPos - OpponentPos,
+
+            % Calculate King Mobility
+            king_mobility(board(Rows), Player, PlayerMobility),
+            king_mobility(board(Rows), Opponent, OpponentMobility),
+            MobilityScore is PlayerMobility - OpponentMobility,
+
+            % Calculate Threats and Defenses
+            threats_defenses(board(Rows), Player, PlayerThreats),
+            threats_defenses(board(Rows), Opponent, OpponentThreats),
+            ThreatsScore is PlayerThreats - OpponentThreats,
+
+            % Calculate Board Control
+            board_control(board(Rows), Player, PlayerControl),
+            board_control(board(Rows), Opponent, OpponentControl),
+            ControlScore is PlayerControl - OpponentControl,
 
             % Calculate Big Score
-            (   
+            (
                 % Player's king dies or opponent's king reaches player's corner
-                (PlayerKings = [], BigScore = -999999) ;
-                (player_corner(Player, CornerX, CornerY), get_element(board(Rows), CornerX, CornerY, OpponentKing), is_king(OpponentKing, Opponent), BigScore = -99999) ;
+                (PlayerKings = [], BigScore = -999999);
+                (player_corner(Player, CornerX, CornerY), get_element(board(Rows), CornerX, CornerY, OpponentKing), is_king(OpponentKing, Opponent), BigScore = -99999);
                 
                 % Opponent's king dies or player's king reaches opponent's corner
-                (OpponentKings = [], BigScore = 999999) ;
-                (player_corner(Opponent, OppCornerX, OppCornerY), get_element(board(Rows), OppCornerX, OppCornerY, PlayerKing), is_king(PlayerKing, Player), BigScore = 99999) ;
+                (OpponentKings = [], BigScore = 999999);
+                (player_corner(Opponent, OppCornerX, OppCornerY), get_element(board(Rows), OppCornerX, OppCornerY, PlayerKing), is_king(PlayerKing, Player), BigScore = 99999);
                 
                 % Default case
                 BigScore = 0
             ),
+            
+            % Assign Weights
+            MaterialWeight = 0.2,
+            PositionalWeight = 0.2,
+            MobilityWeight = 0.2,
+            ThreatsWeight = 0.2,
+            ControlWeight = 0.2,
 
-            % Calculate total value
-            Value is BigScore + PlayerScore - OpponentScore
+            % Compute Total Value
+            Value is (MaterialScore * MaterialWeight) +
+                    (PositionalScore * PositionalWeight) +
+                    (MobilityScore * MobilityWeight) +
+                    (ThreatsScore * ThreatsWeight) +
+                    (ControlScore * ControlWeight) + BigScore
         ),
         _Error,
         (Value = 0)
     ).
 
-% proximity_score(Board, Player, NonKings, Kings, Score)
-% Calculates the proximity score for the given Player's pieces.
-proximity_score(board(Rows), Player, NonKings, Kings, Score) :-
+% Calculate positional advantage based on distance to opponent's corner
+positional_advantage(board(Rows), Player, Score) :-
     player_corner(Player, CornerX, CornerY),
     findall(Distance, (
-        member((X, Y), NonKings),
+        nth1(X, Rows, Row),
+        nth1(Y, Row, Cell),
+        is_player_piece(Cell, Player),
         manhattan_distance(X, Y, CornerX, CornerY, Distance)
-    ), Distances1),
-    findall(Distance, (
-        member((X, Y), Kings),
-        manhattan_distance(X, Y, CornerX, CornerY, Distance)
-    ), Distances2),
-    length(Distances1, Score1),
-    length(Distances2, Score2),
-    Score is Score1 + Score2.
+    ), Distances),
+    sum_list(Distances, TotalDistance),
+    Score is -TotalDistance.  % Lower distance is better
 
-% manhattan_distance(X1, Y1, X2, Y2, Distance)
 manhattan_distance((X1, Y1), (X2, Y2), Distance) :-
     DX is abs(X2 - X1),
     DY is abs(Y2 - Y1),
     Distance is DX + DY.
+
+% Calculate king mobility
+king_mobility(board(Rows), Player, Mobility) :-
+    findall(Move, (
+        nth1(X, Rows, Row),
+        nth1(Y, Row, Cell),
+        is_king(Cell, Player),
+        (
+            check_transform((X, Y), Player, board(Rows), 'True');
+            check_jump(board(Rows), Player, ((X, Y), (X, Y)), 'True')
+        )
+    ), Moves),
+    length(Moves, Mobility).
+
+% Calculate threats and defenses
+threats_defenses(board(Rows), Player, Score) :-
+    findall(Threat, (
+        nth1(X, Rows, Row),
+        nth1(Y, Row, Cell),
+        is_player_piece(Cell, Player),
+        threatened(board(Rows), Player, (X, Y))
+    ), Threats),
+    length(Threats, Score).
+
+% Determine if a piece is threatening
+threatened(board(Rows), Player, (X, Y)) :-
+    opponent(Player, Opponent),
+    adjacent_positions(X, Y, Adjacent),
+    member((AX, AY), Adjacent),
+    within_bounds(AX, AY),
+    nth1(AX, Rows, Row),
+    nth1(AY, Row, OpponentCell),
+    is_player_piece(OpponentCell, Opponent).
+
+% Get adjacent positions
+adjacent_positions(X, Y, Adjacent) :-
+    DXList = [-1, 0, 1],
+    DYList = [-1, 0, 1],
+    findall((NX, NY), (
+        member(DX, DXList),
+        member(DY, DYList),
+        (DX \= 0; DY \= 0),
+        NX is X + DX,
+        NY is Y + DY
+    ), Adjacent).
+
+% Calculate board control based on piece distribution
+board_control(board(Rows), Player, Control) :-
+    findall((X, Y), (
+        nth1(X, Rows, Row),
+        nth1(Y, Row, Cell),
+        is_player_piece(Cell, Player)
+    ), Pieces),
+    length(Pieces, Control).
+
+% Check if a cell contains a player's piece (regular or king)
+is_player_piece(Cell, Player) :-
+    (Player = w, member(Cell, ['w', 'y']));
+    (Player = b, member(Cell, ['b', 'x'])).
 
 % Check if a cell contains a player's king piece
 is_king(Cell, Player) :-
