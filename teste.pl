@@ -689,18 +689,42 @@ value(board(Rows), Player, Value) :-
 % proximity_score(Board, Player, NonKings, Kings, Score)
 % Calculates the proximity score for the given Player's pieces.
 proximity_score(board(Rows), Player, NonKings, Kings, Score) :-
-    player_corner(Player, CornerX, CornerY),
-    findall(Distance, (
-        member((X, Y), NonKings),
-        manhattan_distance(X, Y, CornerX, CornerY, Distance)
-    ), Distances1),
+    opponent(Player, Opponent),
+    player_corner(Player, PlayerCornerX, PlayerCornerY),
+    player_corner(Opponent, OpponentCornerX, OpponentCornerY),
+
+    % Calculate player's king's distance to the opponent's corner
     findall(Distance, (
         member((X, Y), Kings),
-        manhattan_distance(X, Y, CornerX, CornerY, Distance)
-    ), Distances2),
-    length(Distances1, Score1),
-    length(Distances2, Score2),
-    Score is Score1 + Score2.
+        manhattan_distance(X, Y, OpponentCornerX, OpponentCornerY, Distance)
+    ), PlayerKingDistances),
+    sum_list(PlayerKingDistances, PlayerKingScore),
+
+    % Calculate opponent's king's distance to the player's corner
+    findall(Distance, (
+        member((X, Y), OpponentKings),
+        manhattan_distance(X, Y, PlayerCornerX, PlayerCornerY, Distance)
+    ), OpponentKingDistances),
+    sum_list(OpponentKingDistances, OpponentKingScore),
+
+    % Calculate player's pieces' distance to the opponent's king
+    findall(Distance, (
+        member((X, Y), NonKings),
+        member((OX, OY), OpponentKings),
+        manhattan_distance(X, Y, OX, OY, Distance)
+    ), PlayerPieceDistances),
+    sum_list(PlayerPieceDistances, PlayerPieceScore),
+
+    % Calculate opponent's pieces' distance to the player's king
+    findall(Distance, (
+        member((X, Y), OpponentNonKings),
+        member((PX, PY), Kings),
+        manhattan_distance(X, Y, PX, PY, Distance)
+    ), OpponentPieceDistances),
+    sum_list(OpponentPieceDistances, OpponentPieceScore),
+
+    % Calculate total score
+    Score is PlayerKingScore - OpponentKingScore + PlayerPieceScore - OpponentPieceScore.
 
 % manhattan_distance(X1, Y1, X2, Y2, Distance)
 manhattan_distance((X1, Y1), (X2, Y2), Distance) :-
