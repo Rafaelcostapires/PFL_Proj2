@@ -1,4 +1,5 @@
 :- use_module(library(random)).
+:- use_module(library(lists)).
 
 play :-
     display_menu,
@@ -114,7 +115,7 @@ display_game(board(Rows), random,Player2,b) :-            %Display game for whit
         display_game(NewBoard, Player2,random, w)        %Continue the game if no winner
     ).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-display_game(board(Rows), greedy,Player2,w) :-            %Display game for computer greedy
+display_game(board(Rows), greedy,Player2,w) :-            %Display game for white, computer greedy
     write('Computer (white) is gonna play'), nl,
     display_board(board(Rows)), nl,
     choose_move(greedy,Play, w, board(Rows)),
@@ -128,7 +129,7 @@ display_game(board(Rows), greedy,Player2,w) :-            %Display game for comp
         display_game(NewBoard, Player2,greedy, b)        %Continue the game if no winner 
     ).
 
-display_game(board(Rows), greedy,Player2,b) :-            %Display game for white, computer greedy
+display_game(board(Rows), greedy,Player2,b) :-            %Display game for black, computer greedy
     write('Computer (black) is gonna play'), nl,
     display_board(board(Rows)), nl,
     choose_move(greedy,Play, b, board(Rows)),
@@ -496,8 +497,6 @@ choose_move(random,Play, b, board(Rows)):-      %choose compputer move(random) f
   valid_moves(board(Rows),b,Moves),
   random_member(Play,Moves).                      
 
-% greedy
-
 choose_move(greedy,Play, w, board(Rows)):-      %choose compputer move(greedy) for white
     best_move(board(Rows), w, Play).  
 
@@ -678,12 +677,13 @@ replace_in_board(Row, [H|T], NewRow, [H|NewBoard]) :-
     Row1 is Row - 1,
     replace_in_board(Row1, T, NewRow, NewBoard).
 
-
+/* 
 nth1(1, [H|_], H).
 nth1(N, [_|T], X) :-
     N > 1,
     N1 is N - 1,
     nth1(N1, T, X).
+*/
 
 get_element(board(Rows), Row, Col, Element) :-
     nth1(Row, Rows, RowList),      
@@ -696,168 +696,90 @@ value(board(Rows), Player, Value) :-
         (
             opponent(Player, Opponent),
 
-            % Get players pieces
-            get_player_non_kings(board(Rows), Player, PlayerNonKings),
-            get_player_kings(board(Rows), Player, PlayerKings),
-
-            % Get opponents pieces
-            get_opponent_non_kings(board(Rows), Player, OpponentNonKings),
-            get_opponent_kings(board(Rows), Player, OpponentKings),
-
-            % Calculate Material Count
-            length(PlayerNonKings, NumPlayerNonKings),
-            length(PlayerKings, NumPlayerKings),
-            length(OpponentNonKings, NumOpponentNonKings),
-            length(OpponentKings, NumOpponentKings),
-            MaterialScore is (NumPlayerNonKings + 3 * NumPlayerKings) - 
-                            (NumOpponentNonKings + 3 * NumOpponentKings),
-            
-            % Calculate Positional Advantage
-            positional_advantage(board(Rows), Player, PlayerPos),
-            positional_advantage(board(Rows), Opponent, OpponentPos),
-            PositionalScore is PlayerPos - OpponentPos,
-
-            % Calculate King Mobility
-            king_mobility(board(Rows), Player, PlayerMobility),
-            king_mobility(board(Rows), Opponent, OpponentMobility),
-            MobilityScore is PlayerMobility - OpponentMobility,
-
-            % Calculate Threats and Defenses
-            threats_defenses(board(Rows), Player, PlayerThreats),
-            threats_defenses(board(Rows), Opponent, OpponentThreats),
-            ThreatsScore is PlayerThreats - OpponentThreats,
+            % Calculate proximity score
+            proximity_score(board(Rows), Player, PlayerScore),
+            proximity_score(board(Rows), Opponent, OpponentScore),
 
             % Calculate Big Score
-            (
-                % Players king dies or opponents king reaches players corner
-                (PlayerKings = [], BigScore = -999999);
-                (player_corner(Player, CornerX, CornerY), get_element(board(Rows), CornerX, CornerY, OpponentKing), is_king(OpponentKing, Opponent), BigScore = -99999);
+            (   
+                % Player's king dies or opponent's king reaches player's corner
+                (PlayerKings = [], BigScore = -999999) ;
+                (player_corner(Player, CornerX, CornerY), get_element(board(Rows), CornerX, CornerY, OpponentKing), is_king(OpponentKing, Opponent), BigScore = -99999) ;
                 
-                % Opponents king dies or players king reaches opponents corner
-                (OpponentKings = [], BigScore = 999999);
-                (player_corner(Opponent, OppCornerX, OppCornerY), get_element(board(Rows), OppCornerX, OppCornerY, PlayerKing), is_king(PlayerKing, Player), BigScore = 99999);
+                % Opponent's king dies or player's king reaches opponent's corner
+                (OpponentKings = [], BigScore = 999999) ;
+                (player_corner(Opponent, OppCornerX, OppCornerY), get_element(board(Rows), OppCornerX, OppCornerY, PlayerKing), is_king(PlayerKing, Player), BigScore = 99999) ;
                 
                 % Default case
                 BigScore = 0
             ),
-            
-            % Assign Weights
-            MaterialWeight = 0.2,
-            PositionalWeight = 0.3,
-            MobilityWeight = 0.2,
-            ThreatsWeight = 0.3,
 
-            % Compute Total Value
-            Value is (MaterialScore * MaterialWeight) +
-                    (PositionalScore * PositionalWeight) +
-                    (MobilityScore * MobilityWeight) +
-                    (ThreatsScore * ThreatsWeight) + BigScore
+            % Calculate total value
+            Value is BigScore + PlayerScore - OpponentScore
         ),
         _Error,
         (Value = 0)
     ).
 
-% Calculate positional advantage based on distance to opponents corner
-positional_advantage(board(Rows), Player, Score) :-
-    player_corner(Player, CornerX, CornerY),
-    findall(Distance, (
-        nth1(X, Rows, Row),
-        nth1(Y, Row, Cell),
-        is_player_piece(Cell, Player),
-        manhattan_distance(X, Y, CornerX, CornerY, Distance)
-    ), Distances),
-    sum_list(Distances, TotalDistance),
-    Score is -TotalDistance.  % Lower distance is better
+% proximity_score(Board, Player, NonKings, Kings, Score)
+% Calculates the proximity score for the given Player's pieces.
+proximity_score(board(Rows), Player, Score) :-
 
-manhattan_distance((X1, Y1), (X2, Y2), Distance) :-
-    DX is abs(X2 - X1),
-    DY is abs(Y2 - Y1),
-    Distance is DX + DY.
-
-% Calculate king mobility
-king_mobility(board(Rows), Player, Mobility) :-
-    findall(Move, (
-        nth1(X, Rows, Row),
-        nth1(Y, Row, Cell),
-        is_king(Cell, Player),
-        (
-            check_transform((X, Y), Player, board(Rows), 'True');
-            check_jump(board(Rows), Player, ((X, Y), (X, Y)), 'True')
-        )
-    ), Moves),
-    length(Moves, Mobility).
-
-% Calculate threats and defenses
-threats_defenses(board(Rows), Player, Score) :-
-    findall(Threat, (
-        nth1(X, Rows, Row),
-        nth1(Y, Row, Cell),
-        is_player_piece(Cell, Player),
-        threatened(board(Rows), Player, (X, Y))
-    ), Threats),
-    length(Threats, Score).
-
-% Determine if a piece is threatening
-threatened(board(Rows), Player, (X, Y)) :-
     opponent(Player, Opponent),
-    adjacent_positions(X, Y, Adjacent),
-    member((AX, AY), Adjacent),
-    within_bounds(AX, AY),
-    nth1(AX, Rows, Row),
-    nth1(AY, Row, OpponentCell),
-    is_player_piece(OpponentCell, Opponent).
 
-% Get adjacent positions
-adjacent_positions(X, Y, Adjacent) :-
-    DXList = [-1, 0, 1],
-    DYList = [-1, 0, 1],
-    findall((NX, NY), (
-        member(DX, DXList),
-        member(DY, DYList),
-        (DX \= 0; DY \= 0),
-        NX is X + DX,
-        NY is Y + DY
-    ), Adjacent).
+    % Get player's pieces and kings
+    get_non_kings(board(Rows), Player, NonKings),
+    get_kings(board(Rows), Player, Kings),
 
-% Check if a cell contains a players piece (regular or king)
-is_player_piece(Cell, Player) :-
-    (Player = w, member(Cell, ['w', 'y']));
-    (Player = b, member(Cell, ['b', 'x'])).
+    % Get opponent's pieces and kings
+    get_non_kings(board(Rows), Opponent, OpponentNonKings),
+    get_kings(board(Rows), Opponent, OpponentKings),
 
-% Check if a cell contains a players king piece
-is_king(Cell, Player) :-
-    (Player = w, Cell = 'y');
-    (Player = b, Cell = 'x').
+    player_corner(Player, PlayerCornerX, PlayerCornerY),
+    player_corner(Opponent, OpponentCornerX, OpponentCornerY),
 
-get_player_non_kings(board(Rows), w, NonKings) :-
-    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'w')), NonKings).
+    % Calculate player's king's distance to the opponent's corner
+    findall(Distance, (
+        member((X, Y), Kings),
+        manhattan_distance(X, Y, OpponentCornerX, OpponentCornerY, Distance)
+    ), PlayerKingDistances),
+    sum_list(PlayerKingDistances, PlayerKingScore),
+    
+    % Calculate player's pieces' distance to the opponent's king
+    findall(Distance, (
+        member((X, Y), NonKings),
+        member((OX, OY), OpponentKings),
+        manhattan_distance(X, Y, OX, OY, Distance)
+    ), PlayerPieceDistances),
+    sum_list(PlayerPieceDistances, PlayerPieceScore),
 
-get_player_non_kings(board(Rows), b, NonKings) :-
-    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'b')), NonKings).
+    % Calculate total score
+    Score is -PlayerKingScore - PlayerPieceScore.
 
-get_opponent_non_kings(board(Rows), w, NonKings) :-
-    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'b')), NonKings).
+% manhattan_distance(X1, Y1, X2, Y2, Distance)
+manhattan_distance(X1, Y1, X2, Y2, Distance) :-
+    Distance is abs(X1 - X2) + abs(Y1 - Y2).
 
-get_opponent_non_kings(board(Rows), b, NonKings) :-
-    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'w')), NonKings).
-
-get_player_kings(board(Rows), w, NonKings) :-
-    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'y')), NonKings).
-
-get_player_kings(board(Rows), b, NonKings) :-
-    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'x')), NonKings).
-
-get_opponent_kings(board(Rows), w, NonKings) :-
-    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'x')), NonKings).
-
-get_opponent_kings(board(Rows), b, NonKings) :-
-    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'y')), NonKings).
+% Check if a cell contains a player's king piece
+is_king(Cell, w) :- Cell = 'y'.
+is_king(Cell, b) :- Cell = 'x'.
 
 opponent(w, b).
 opponent(b, w).
-
 player_corner(w, 8, 8).
 player_corner(b, 1, 1).
+
+get_non_kings(board(Rows), w, NonKings) :-
+    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'w')), NonKings).
+
+get_non_kings(board(Rows), b, NonKings) :-
+    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'b')), NonKings).
+
+get_kings(board(Rows), w, Kings) :-
+    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'y')), Kings).
+
+get_kings(board(Rows), b, Kings) :-
+    findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'x')), Kings).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%BEST MOVE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -867,6 +789,7 @@ best_move(board(Rows), Player, BestMove) :-
     best_move_recursive(Moves, board(Rows), Player, -99999, none, BestMove).
 
 best_move_recursive([], _Board, _Player, _CurrentBestValue, BestMove, BestMove).
+
 best_move_recursive([Move|Rest], board(Rows), Player, CurrentBestValue, CurrentBestMove, BestMove) :-
     move(board(Rows), Player, Move, NewBoard),
     value(NewBoard, Player, MoveValue),
@@ -878,3 +801,8 @@ best_move_recursive([Move|Rest], board(Rows), Player, CurrentBestValue, CurrentB
            NewBestMove = CurrentBestMove
     ),
     best_move_recursive(Rest, board(Rows), Player, NewBestValue, NewBestMove, BestMove).
+
+sum_list([], 0).
+sum_list([H|T], Sum) :-
+    sum_list(T, Rest),
+    Sum is H + Rest.
