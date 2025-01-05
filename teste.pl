@@ -1,5 +1,6 @@
 :- use_module(library(random)).
-
+:- use_module(library(lists)).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%MENU%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 play :-
     display_menu,
     read_option(Option),
@@ -44,8 +45,9 @@ handle_option(4) :-
     select_computer_level(Level2),
     initial_state((Level1, Level2)).
 handle_option(5) :-
-    write('Exiting the game. Goodbye!'), nl.
+    write('Exiting game.'), nl.
 
+% Additional predicate to select computer level
 select_computer_level(Level) :-
     write('Choose Computer Level:'), nl,
     write('1. Level 1 (Random)'), nl,
@@ -473,7 +475,7 @@ valid_moves(board(Rows), w, Moves) :-
     sort(RawMoves, Moves),          %Remove duplicates 
     length(Moves, Count),
     write('Number of valid moves: '), write(Count), nl.    
-
+/*
 between(Low, High, Low) :-
     integer(Low),
     integer(High),
@@ -485,7 +487,7 @@ between(Low, High, Value) :-
     Low < High,
     Next is Low + 1,
     between(Next, High, Value).
-
+*/
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%CHOOSE_MOVE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 choose_move(random,Play, w, board(Rows)):-      %choose compputer move(random) for white
@@ -678,13 +680,13 @@ replace_in_board(Row, [H|T], NewRow, [H|NewBoard]) :-
     Row1 is Row - 1,
     replace_in_board(Row1, T, NewRow, NewBoard).
 
-
+/*
 nth1(1, [H|_], H).
 nth1(N, [_|T], X) :-
     N > 1,
     N1 is N - 1,
     nth1(N1, T, X).
-
+*/
 get_element(board(Rows), Row, Col, Element) :-
     nth1(Row, Rows, RowList),      
     nth1(Col, RowList, Element).   
