@@ -712,15 +712,13 @@ value(board(Rows), Player, Value) :-
     opponent(Player, Opponent),
     corner(Opponent, OpponentCornerX, OpponentCornerY),
 
-    % Get player's pieces and kings
+    % get player's pieces and kings
     get_all(board(Rows), Player, PlayerPieces),
     get_all(board(Rows), Opponent, OpponentPieces),
     get_kings(board(Rows), Player, PlayerKings),
     get_kings(board(Rows), Opponent, OpponentKings),
 
-
-
-    % Calculate distances to opponent's kings
+    % calculate distances to opponent's kings
     findall(Distance, (
         member((X, Y), PlayerPieces),
         member((OX, OY), OpponentKings),
@@ -728,7 +726,7 @@ value(board(Rows), Player, Value) :-
         Distance =< 4
     ), PlayerPieceDistances),
 
-    % Calculate opponents' distances to my kings
+    % calculate opponents' distances to my kings
     findall(Distance, (
         member((X, Y), OpponentPieces),
         member((OX, OY), PlayerKings),
@@ -736,14 +734,14 @@ value(board(Rows), Player, Value) :-
         Distance =< 4
     ), OpponentPieceDistances),
 
-    % Calculate distances to opponent's corner from player's kings
+    % calculate distances to opponent's corner from player's kings
     findall(Distance, (
         member((X, Y), PlayerKings),
         manhattan_distance(X, Y, OpponentCornerX, OpponentCornerY, Distance),
         Distance =< 4
     ), PlayerKingDistances),
 
-    % Calculate total DistScore
+    % calculate total distance score (higher if dist is lower)
     (PlayerPieceDistances = [], PlayerKingDistances = [] ->
         DistScore = 0
     ;
@@ -752,7 +750,7 @@ value(board(Rows), Player, Value) :-
         DistScore is 100000 - (PieceScore + KingScore)
     ),
 
-    % Calculate BigScore
+    % calculate big score (notable difference maker)
     (member(Distance, PlayerPieceDistances), Distance =< 2 ->
         BigScore = -9999999
     ; OpponentKings = [] ->
@@ -763,10 +761,9 @@ value(board(Rows), Player, Value) :-
         BigScore = 0
     ),
 
-    % Calculate total value
+    % calculate total value
     Value is BigScore + DistScore.
 
-% manhattan_distance(X1, Y1, X2, Y2, Distance)
 manhattan_distance(X1, Y1, X2, Y2, Distance) :-
     Distance is abs(X1 - X2) + abs(Y1 - Y2).
 
