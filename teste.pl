@@ -451,15 +451,21 @@ between(Low, High, Value) :-
 
 % % %  must have functionality to distinguish between random and greedy  % % %
 
-choose_move(computer,Play, w, board(Rows)):-
+%%choose_move(computer,Play, w, board(Rows)):-
 %%  valid_moves(board(Rows),w,Moves),
-%%  random_member(Play,Moves).                       % random
-    best_move(board(Rows), w, Play).                 % greedy
+%%  random_member(Play,Moves).                       
+
+%%choose_move(computer,Play, b, board(Rows)):-
+%%  valid_moves(board(Rows),b,Moves),
+%%  random_member(Play,Moves).                      
+
+% greedy
+
+choose_move(computer,Play, w, board(Rows)):-
+    best_move(board(Rows), w, Play).  
 
 choose_move(computer,Play, b, board(Rows)):-
-%%  valid_moves(board(Rows),b,Moves),
-%%  random_member(Play,Moves).                       % random
-    best_move(board(Rows), b, Play).                 % greedy
+    best_move(board(Rows), b, Play).
 
 choose_move(Play, w, board(Rows)) :-
     write('Enter your move in the form ((X1,Y1),(X2,Y2)): '), nl,
