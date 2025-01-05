@@ -773,10 +773,14 @@ corner(w, 8, 8).
 corner(b, 1, 1).
 
 king_reached_corner(board(Rows), w) :-
-    get_element(board(Rows), 1, 1, 'y').
+    get_element(board(Rows), 1, 1, Element),
+    Element = 'y'.
+    write('King reached corner!'), nl.
 
 king_reached_corner(board(Rows), b) :-
-    get_element(board(Rows), 8, 8, 'x').
+    get_element(board(Rows), 8, 8, Element),
+    Element = 'x'.
+    write('King reached corner!'), nl.
 
 get_non_kings(board(Rows), w, NonKings) :-
     findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'w')), NonKings).
