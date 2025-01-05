@@ -46,7 +46,6 @@ handle_option(4) :-
 handle_option(5) :-
     write('Exiting the game. Goodbye!'), nl.
 
-% Additional predicate to select computer level
 select_computer_level(Level) :-
     write('Choose Computer Level:'), nl,
     write('1. Level 1 (Random)'), nl,
