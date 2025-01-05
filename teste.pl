@@ -700,49 +700,66 @@ value(board(Rows), Player, Value) :-
             player_corner(Opponent, OpponentCornerX, OpponentCornerY),
 
             % Get player's pieces and kings
-            get_non_kings(board(Rows), Player, NonKings),
-            get_kings(board(Rows), Player, Kings),
+            get_all(board(Rows), Player, PlayerPieces),
+            get_kings(board(Rows), Player, PlayerKings),
             get_kings(board(Rows), Opponent, OpponentKings),
 
-           % Calculate distances to opponent's king and corner
+            % Calculate distances to opponent's king and corner
             findall(Distance, (
-                member((X, Y), NonKings),
+                member((X, Y), PlayerPieces),
                 member((OX, OY), OpponentKings),
                 manhattan_distance(X, Y, OX, OY, Distance),
                 Distance =< 4
             ), PlayerPieceDistances),
             findall(Distance, (
-                member((X, Y), Kings),
+                member((X, Y), PlayerKings),
                 manhattan_distance(X, Y, OpponentCornerX, OpponentCornerY, Distance),
                 Distance =< 4
             ), PlayerKingDistances),
 
             % Calculate total value
             (PlayerPieceDistances = [], PlayerKingDistances = [] ->
-                PieceScore = 0,
-                KingScore = 0
+                DistScore = 0
             ;
                 sum_list(PlayerPieceDistances, PieceScore),
                 sum_list(PlayerKingDistances, KingScore),
                 DistScore is PieceScore + KingScore
             ),
 
-            % Calculate Big Score
-            (   
-                % Player's king dies or opponent's king reaches player's corner
-                (PlayerKings = [], BigScore = -999999) ;
-                (player_corner(Player, CornerX, CornerY), get_element(board(Rows), CornerX, CornerY, OpponentKing), is_king(OpponentKing, Opponent), BigScore = -99999) ;
-                
-                % Opponent's king dies or player's king reaches opponent's corner
-                (OpponentKings = [], BigScore = 999999) ;
-                (player_corner(Opponent, OppCornerX, OppCornerY), get_element(board(Rows), OppCornerX, OppCornerY, PlayerKing), is_king(PlayerKing, Player), BigScore = 99999) ;
-                
-                % Default case
-                BigScore = 0
+            % Calculate BigScore
+            (
+                % Player has no kings left
+                (PlayerKings = [] ->
+                    BigScore = -999999
+                ;
+                    % Opponent's king has reached player's corner
+                    (player_corner(Player, CornerX, CornerY),
+                     get_element(board(Rows), CornerX, CornerY, OpponentKing),
+                     is_king(OpponentKing, Opponent) ->
+                         BigScore = -999999
+                    ;
+                        % Opponent has no kings left
+                        (OpponentKings = [] ->
+                            BigScore = 999999
+                        ;
+                            % Player's king has reached opponent's corner
+                            (player_corner(Opponent, OppCornerX, OppCornerY),
+                             get_element(board(Rows), OppCornerX, OppCornerY, PlayerKing),
+                             is_king(PlayerKing, Player) ->
+                                 BigScore = 999999
+                            ;
+                                % Default case
+                                BigScore = 0
+                            )
+                        )
+                    )
+                )
             ),
 
             % Calculate total value
-            Value is BigScore + DistScore
+            write('DistScore: '), write(DistScore), nl,
+            write('BigScore: '), write(BigScore), nl,
+            Value is BigScore - DistScore
         ),
         _Error,
         (Value = 0)
@@ -773,6 +790,11 @@ get_kings(board(Rows), w, Kings) :-
 get_kings(board(Rows), b, Kings) :-
     findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'x')), Kings).
 
+get_all(board(Rows), Player, All) :-
+    get_kings(board(Rows), Player, Kings),
+    get_non_kings(board(Rows), Player, NonKings),
+    append(Kings, NonKings, All).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%BEST MOVE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 best_move(board(Rows), Player, BestMove) :-
@@ -781,7 +803,8 @@ best_move(board(Rows), Player, BestMove) :-
     findall(Value-Move, (
         member(Move, Moves),
         move(board(Rows), Player, Move, NewBoard),
-        value(NewBoard, Player, Value)
+        value(NewBoard, Player, Value),
+        write('Move: '), write(Move), write(' ['), write(Value), write(']'), nl
     ), MoveValues),
     (all_values_zero(MoveValues) ->
         random_member(_-BestMove, MoveValues)
