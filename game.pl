@@ -709,73 +709,77 @@ get_element(board(Rows), Row, Col, Element) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%VALUE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 value(board(Rows), Player, Value) :-
-    catch(
-        (
-            opponent(Player, Opponent),
-            player_corner(Player, PlayerCornerX, PlayerCornerY),
-            player_corner(Opponent, OpponentCornerX, OpponentCornerY),
+    opponent(Player, Opponent),
+    corner(Opponent, OpponentCornerX, OpponentCornerY),
 
-            % Get player's pieces and kings
-            get_non_kings(board(Rows), Player, NonKings),
-            get_kings(board(Rows), Player, Kings),
-            get_kings(board(Rows), Opponent, OpponentKings),
+    % Get player's pieces and kings
+    get_all(board(Rows), Player, PlayerPieces),
+    get_all(board(Rows), Opponent, OpponentPieces),
+    get_kings(board(Rows), Player, PlayerKings),
+    get_kings(board(Rows), Opponent, OpponentKings),
 
-           % Calculate distances to opponent's king and corner
-            findall(Distance, (
-                member((X, Y), NonKings),
-                member((OX, OY), OpponentKings),
-                manhattan_distance(X, Y, OX, OY, Distance),
-                Distance =< 4
-            ), PlayerPieceDistances),
-            findall(Distance, (
-                member((X, Y), Kings),
-                manhattan_distance(X, Y, OpponentCornerX, OpponentCornerY, Distance),
-                Distance =< 4
-            ), PlayerKingDistances),
 
-            % Calculate total value
-            (PlayerPieceDistances = [], PlayerKingDistances = [] ->
-                PieceScore = 0,
-                KingScore = 0
-            ;
-                sum_list(PlayerPieceDistances, PieceScore),
-                sum_list(PlayerKingDistances, KingScore),
-                DistScore is PieceScore + KingScore
-            ),
 
-            % Calculate Big Score
-            (   
-                % Player's king dies or opponent's king reaches player's corner
-                (PlayerKings = [], BigScore = -999999) ;
-                (player_corner(Player, CornerX, CornerY), get_element(board(Rows), CornerX, CornerY, OpponentKing), is_king(OpponentKing, Opponent), BigScore = -99999) ;
-                
-                % Opponent's king dies or player's king reaches opponent's corner
-                (OpponentKings = [], BigScore = 999999) ;
-                (player_corner(Opponent, OppCornerX, OppCornerY), get_element(board(Rows), OppCornerX, OppCornerY, PlayerKing), is_king(PlayerKing, Player), BigScore = 99999) ;
-                
-                % Default case
-                BigScore = 0
-            ),
+    % Calculate distances to opponent's kings
+    findall(Distance, (
+        member((X, Y), PlayerPieces),
+        member((OX, OY), OpponentKings),
+        manhattan_distance(X, Y, OX, OY, Distance),
+        Distance =< 4
+    ), PlayerPieceDistances),
 
-            % Calculate total value
-            Value is BigScore + DistScore
-        ),
-        _Error,
-        (Value = 0)
-    ).
+    % Calculate opponents' distances to my kings
+    findall(Distance, (
+        member((X, Y), OpponentPieces),
+        member((OX, OY), PlayerKings),
+        manhattan_distance(X, Y, OX, OY, Distance),
+        Distance =< 4
+    ), OpponentPieceDistances),
+
+    % Calculate distances to opponent's corner from player's kings
+    findall(Distance, (
+        member((X, Y), PlayerKings),
+        manhattan_distance(X, Y, OpponentCornerX, OpponentCornerY, Distance),
+        Distance =< 4
+    ), PlayerKingDistances),
+
+    % Calculate total DistScore
+    (PlayerPieceDistances = [], PlayerKingDistances = [] ->
+        DistScore = 0
+    ;
+        sum_list(PlayerPieceDistances, PieceScore),
+        sum_list(PlayerKingDistances, KingScore),
+        DistScore is 100000 - (PieceScore + KingScore)
+    ),
+
+    % Calculate BigScore
+    (member(Distance, PlayerPieceDistances), Distance =< 2 ->
+        BigScore = -9999999
+    ; OpponentKings = [] ->
+        BigScore = 9999999
+    ; king_reached_corner(board(Rows), Player) ->
+        BigScore = 9999999
+    ; 
+        BigScore = 0
+    ),
+
+    % Calculate total value
+    Value is BigScore + DistScore.
 
 % manhattan_distance(X1, Y1, X2, Y2, Distance)
 manhattan_distance(X1, Y1, X2, Y2, Distance) :-
     Distance is abs(X1 - X2) + abs(Y1 - Y2).
 
-% Check if a cell contains a player's king piece
-is_king(Cell, w) :- Cell = 'y'.
-is_king(Cell, b) :- Cell = 'x'.
-
 opponent(w, b).
 opponent(b, w).
-player_corner(w, 8, 8).
-player_corner(b, 1, 1).
+corner(w, 8, 8).
+corner(b, 1, 1).
+
+king_reached_corner(board(Rows), w) :-
+    get_element(board(Rows), 1, 1, 'y').
+
+king_reached_corner(board(Rows), b) :-
+    get_element(board(Rows), 8, 8, 'x').
 
 get_non_kings(board(Rows), w, NonKings) :-
     findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'w')), NonKings).
@@ -789,6 +793,11 @@ get_kings(board(Rows), w, Kings) :-
 get_kings(board(Rows), b, Kings) :-
     findall((X, Y), (between(1, 8, X), between(1, 8, Y), get_element(board(Rows), X, Y, 'x')), Kings).
 
+get_all(board(Rows), Player, All) :-
+    get_kings(board(Rows), Player, Kings),
+    get_non_kings(board(Rows), Player, NonKings),
+    append(Kings, NonKings, All).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%BEST MOVE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 best_move(board(Rows), Player, BestMove) :-
@@ -797,12 +806,16 @@ best_move(board(Rows), Player, BestMove) :-
     findall(Value-Move, (
         member(Move, Moves),
         move(board(Rows), Player, Move, NewBoard),
-        value(NewBoard, Player, Value)
+        value(NewBoard, Player, Value),
+        Value \= 10090567,
+        Value > -9000000
     ), MoveValues),
     (all_values_zero(MoveValues) ->
-        random_member(_-BestMove, MoveValues)
+        random_member(_-BestMove, MoveValues),
+        write('Random move!'), nl
     ;
-        max_member(_-BestMove, MoveValues)
+        max_member(_-BestMove, MoveValues),
+        write('Best move!'), nl
     ).
 
 all_values_zero([]).
