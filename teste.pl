@@ -476,7 +476,7 @@ valid_moves(board(Rows), w, Moves) :-
     sort(RawMoves, Moves),          %Remove duplicates 
     length(Moves, Count),
     write('Number of valid moves: '), write(Count), nl.    
-/*
+
 between(Low, High, Low) :-
     integer(Low),
     integer(High),
@@ -488,7 +488,7 @@ between(Low, High, Value) :-
     Low < High,
     Next is Low + 1,
     between(Next, High, Value).
-*/
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%CHOOSE_MOVE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 choose_move(random,Play, w, board(Rows)):-      %choose compputer move(random) for white
@@ -696,10 +696,36 @@ value(board(Rows), Player, Value) :-
     catch(
         (
             opponent(Player, Opponent),
+            player_corner(Player, PlayerCornerX, PlayerCornerY),
+            player_corner(Opponent, OpponentCornerX, OpponentCornerY),
 
-            % Calculate proximity score
-            proximity_score(board(Rows), Player, PlayerScore),
-            proximity_score(board(Rows), Opponent, OpponentScore),
+            % Get player's pieces and kings
+            get_non_kings(board(Rows), Player, NonKings),
+            get_kings(board(Rows), Player, Kings),
+            get_kings(board(Rows), Opponent, OpponentKings),
+
+           % Calculate distances to opponent's king and corner
+            findall(Distance, (
+                member((X, Y), NonKings),
+                member((OX, OY), OpponentKings),
+                manhattan_distance(X, Y, OX, OY, Distance),
+                Distance =< 4
+            ), PlayerPieceDistances),
+            findall(Distance, (
+                member((X, Y), Kings),
+                manhattan_distance(X, Y, OpponentCornerX, OpponentCornerY, Distance),
+                Distance =< 4
+            ), PlayerKingDistances),
+
+            % Calculate total value
+            (PlayerPieceDistances = [], PlayerKingDistances = [] ->
+                PieceScore = 0,
+                KingScore = 0
+            ;
+                sum_list(PlayerPieceDistances, PieceScore),
+                sum_list(PlayerKingDistances, KingScore),
+                DistScore is PieceScore + KingScore
+            ),
 
             % Calculate Big Score
             (   
@@ -716,46 +742,11 @@ value(board(Rows), Player, Value) :-
             ),
 
             % Calculate total value
-            Value is BigScore + PlayerScore - OpponentScore
+            Value is BigScore + DistScore
         ),
         _Error,
         (Value = 0)
     ).
-
-% proximity_score(Board, Player, NonKings, Kings, Score)
-% Calculates the proximity score for the given Player's pieces.
-proximity_score(board(Rows), Player, Score) :-
-
-    opponent(Player, Opponent),
-
-    % Get player's pieces and kings
-    get_non_kings(board(Rows), Player, NonKings),
-    get_kings(board(Rows), Player, Kings),
-
-    % Get opponent's pieces and kings
-    get_non_kings(board(Rows), Opponent, OpponentNonKings),
-    get_kings(board(Rows), Opponent, OpponentKings),
-
-    player_corner(Player, PlayerCornerX, PlayerCornerY),
-    player_corner(Opponent, OpponentCornerX, OpponentCornerY),
-
-    % Calculate player's king's distance to the opponent's corner
-    findall(Distance, (
-        member((X, Y), Kings),
-        manhattan_distance(X, Y, OpponentCornerX, OpponentCornerY, Distance)
-    ), PlayerKingDistances),
-    sum_list(PlayerKingDistances, PlayerKingScore),
-    
-    % Calculate player's pieces' distance to the opponent's king
-    findall(Distance, (
-        member((X, Y), NonKings),
-        member((OX, OY), OpponentKings),
-        manhattan_distance(X, Y, OX, OY, Distance)
-    ), PlayerPieceDistances),
-    sum_list(PlayerPieceDistances, PlayerPieceScore),
-
-    % Calculate total score
-    Score is -PlayerKingScore - PlayerPieceScore.
 
 % manhattan_distance(X1, Y1, X2, Y2, Distance)
 manhattan_distance(X1, Y1, X2, Y2, Distance) :-
@@ -787,21 +778,21 @@ get_kings(board(Rows), b, Kings) :-
 best_move(board(Rows), Player, BestMove) :-
     valid_moves(board(Rows), Player, Moves),
     Moves \= [],
-    best_move_recursive(Moves, board(Rows), Player, -99999, none, BestMove).
+    findall(Value-Move, (
+        member(Move, Moves),
+        move(board(Rows), Player, Move, NewBoard),
+        value(NewBoard, Player, Value)
+    ), MoveValues),
+    (all_values_zero(MoveValues) ->
+        random_member(_-BestMove, MoveValues)
+    ;
+        max_member(_-BestMove, MoveValues)
+    ).
 
-best_move_recursive([], _Board, _Player, _CurrentBestValue, BestMove, BestMove).
-
-best_move_recursive([Move|Rest], board(Rows), Player, CurrentBestValue, CurrentBestMove, BestMove) :-
-    move(board(Rows), Player, Move, NewBoard),
-    value(NewBoard, Player, MoveValue),
-    (
-        MoveValue > CurrentBestValue
-        -> NewBestValue = MoveValue,
-           NewBestMove = Move
-        ;  NewBestValue = CurrentBestValue,
-           NewBestMove = CurrentBestMove
-    ),
-    best_move_recursive(Rest, board(Rows), Player, NewBestValue, NewBestMove, BestMove).
+all_values_zero([]).
+all_values_zero([Value-_|T]) :-
+    Value =:= 0,
+    all_values_zero(T).
 
 sum_list([], 0).
 sum_list([H|T], Sum) :-
