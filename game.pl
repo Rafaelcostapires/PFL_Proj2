@@ -807,15 +807,15 @@ best_move(board(Rows), Player, BestMove) :-
     findall(Value-Move, (
         member(Move, Moves),
         move(board(Rows), Player, Move, NewBoard),
-        value(NewBoard, Player, Value),
-        Value \= 10090567,
-        Value > -9000000
+        value(NewBoard, Player, Value),         % get value of the move
+        Value \= 10090567,                      % bad value
+        Value > -9000000                        % means big score negative was probably met
     ), MoveValues),
     (all_values_zero(MoveValues) ->
-        random_member(_-BestMove, MoveValues),
+        random_member(_-BestMove, MoveValues),      % if all values are zero, choose random move
         write('Random move!'), nl
     ;
-        max_member(_-BestMove, MoveValues),
+        max_member(_-BestMove, MoveValues),         % choose move with highest value
         write('Best move!'), nl
     ).
 
