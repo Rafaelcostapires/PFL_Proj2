@@ -684,11 +684,6 @@ value(board(Rows), Player, Value) :-
             threats_defenses(board(Rows), Opponent, OpponentThreats),
             ThreatsScore is PlayerThreats - OpponentThreats,
 
-            % Calculate Board Control
-            board_control(board(Rows), Player, PlayerControl),
-            board_control(board(Rows), Opponent, OpponentControl),
-            ControlScore is PlayerControl - OpponentControl,
-
             % Calculate Big Score
             (
                 % Player's king dies or opponent's king reaches player's corner
@@ -705,17 +700,15 @@ value(board(Rows), Player, Value) :-
             
             % Assign Weights
             MaterialWeight = 0.2,
-            PositionalWeight = 0.2,
+            PositionalWeight = 0.3,
             MobilityWeight = 0.2,
-            ThreatsWeight = 0.2,
-            ControlWeight = 0.2,
+            ThreatsWeight = 0.3,
 
             % Compute Total Value
             Value is (MaterialScore * MaterialWeight) +
                     (PositionalScore * PositionalWeight) +
                     (MobilityScore * MobilityWeight) +
-                    (ThreatsScore * ThreatsWeight) +
-                    (ControlScore * ControlWeight) + BigScore
+                    (ThreatsScore * ThreatsWeight) + BigScore
         ),
         _Error,
         (Value = 0)
@@ -782,15 +775,6 @@ adjacent_positions(X, Y, Adjacent) :-
         NX is X + DX,
         NY is Y + DY
     ), Adjacent).
-
-% Calculate board control based on piece distribution
-board_control(board(Rows), Player, Control) :-
-    findall((X, Y), (
-        nth1(X, Rows, Row),
-        nth1(Y, Row, Cell),
-        is_player_piece(Cell, Player)
-    ), Pieces),
-    length(Pieces, Control).
 
 % Check if a cell contains a player's piece (regular or king)
 is_player_piece(Cell, Player) :-
