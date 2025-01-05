@@ -774,12 +774,12 @@ corner(b, 1, 1).
 
 king_reached_corner(board(Rows), w) :-
     get_element(board(Rows), 1, 1, Element),
-    Element = 'y'.
+    Element = 'y',
     write('King reached corner!'), nl.
 
 king_reached_corner(board(Rows), b) :-
     get_element(board(Rows), 8, 8, Element),
-    Element = 'x'.
+    Element = 'x',
     write('King reached corner!'), nl.
 
 get_non_kings(board(Rows), w, NonKings) :-
